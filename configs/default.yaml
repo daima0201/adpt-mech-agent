@@ -1,0 +1,142 @@
+# 默认配置文件 - Adaptive Mechanism Agent
+
+# Agent配置
+agent:
+  default_type: "react"  # simple, react, reflection, plan_solve
+  max_iterations: 5
+  timeout_seconds: 30
+  enable_knowledge: true
+  enable_tools: true
+  
+  # ReAct Agent配置
+  react:
+    max_reasoning_steps: 10
+    enable_reflection: false
+    
+  # Reflection Agent配置
+  reflection:
+    max_reflection_depth: 3
+    reflection_threshold: 0.7
+    
+  # PlanSolve Agent配置
+  plan_solve:
+    planning_timeout: 60
+    max_subtasks: 10
+
+# LLM配置
+llm:
+  provider: "openai"  # openai, azure, local
+  model: "gpt-3.5-turbo"
+  api_key: ${OPENAI_API_KEY}
+  base_url: ""
+  temperature: 0.1
+  max_tokens: 2000
+  
+  # 本地模型配置
+  local:
+    model_path: ""
+    device: "auto"
+    
+  # Azure配置
+  azure:
+    api_version: "2023-12-01-preview"
+    deployment_name: ""
+
+# 知识库配置
+knowledge:
+  vector_store:
+    type: "chroma"  # chroma, qdrant
+    persist_directory: "./data/vector_stores/chroma"
+    collection_name: "documents"
+    
+  embedder:
+    type: "local"  # local, openai, bge
+    model_name: "BAAI/bge-small-zh-v1.5"
+    device: "cpu"
+    
+  retriever:
+    type: "hybrid"  # vector, bm25, hybrid
+    top_k: 5
+    similarity_threshold: 0.7
+    
+  processors:
+    text_splitter:
+      chunk_size: 500
+      chunk_overlap: 50
+    metadata_extractor:
+      enabled: true
+      fields: ["title", "author", "source", "date"]
+
+# 工具配置
+tools:
+  builtin:
+    calculator: true
+    search: true
+    knowledge_query: true
+    
+  custom:
+    enabled: false
+    directory: "./custom_tools"
+
+# 自适应机制配置
+adaptive:
+  evaluator:
+    metrics: ["accuracy", "relevance", "response_time"]
+    threshold: 0.8
+    
+  orchestrator:
+    strategy: "performance_based"  # performance_based, complexity_based
+    fallback_agent: "simple"
+    
+  knowledge_manager:
+    cache_enabled: true
+    cache_ttl: 3600  # 1小时
+    
+  tool_manager:
+    timeout: 30
+    max_concurrent_tools: 3
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file:
+    enabled: true
+    path: "./data/logs/app.log"
+    max_size: "10MB"
+    backup_count: 5
+
+# 缓存配置
+cache:
+  embeddings:
+    enabled: true
+    ttl: 86400  # 24小时
+    max_size: "100MB"
+    
+  retrieval:
+    enabled: true
+    ttl: 3600  # 1小时
+    max_size: "50MB"
+
+# 服务器配置（如果启用）
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  workers: 1
+
+# 数据目录配置
+data:
+  base_dir: "./data"
+  knowledge:
+    source: "./data/knowledge"
+    processed: "./data/knowledge/processed"
+  vector_stores: "./data/vector_stores"
+  caches: "./data/caches"
+  logs: "./data/logs"
+
+# 测试配置
+test:
+  mock_llm: true
+  test_data_dir: "./tests/fixtures/test_data"
+  timeout_multiplier: 2.0

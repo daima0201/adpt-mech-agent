@@ -1,0 +1,50 @@
+# 自适应机制智能体系统配置
+
+# 知识管理配置
+knowledge:
+  vector_db_path: "./data/vector_db"
+  chunk_size: 500
+  chunk_overlap: 50
+  embedding_model: "text-embedding-ada-002"
+  max_chunks_per_document: 1000
+  similarity_threshold: 0.7
+
+# 智能体配置
+agents:
+  default_role: "support_agent"
+  enable_auto_routing: true
+  max_conversation_history: 50
+  confidence_threshold: 0.6
+
+# 工具调用配置
+tools:
+  enable_shell_access: false
+  enable_file_operations: true
+  max_execution_time: 30
+  require_confirmation: true
+
+# 日志配置
+logging:
+  level: "INFO"
+  file_path: "./logs/system.log"
+  max_file_size: "10MB"
+  backup_count: 5
+
+# API配置（未来扩展）
+api:
+  enabled: false
+  host: "localhost"
+  port: 8000
+  cors_origins: ["*"]
+
+# 性能配置
+performance:
+  max_concurrent_tasks: 10
+  cache_ttl: 3600
+  cleanup_interval: 3600
+
+# 安全配置
+security:
+  enable_auth: false
+  allowed_ips: ["127.0.0.1", "::1"]
+  rate_limit_per_minute: 60

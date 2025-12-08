@@ -1,0 +1,43 @@
+# 开发环境配置
+environment: development
+log_level: DEBUG
+
+# LLM配置
+llm:
+  provider: "openai"
+  model: "gpt-3.5-turbo"
+  api_key: ${OPENAI_API_KEY}
+  temperature: 0.7
+  max_tokens: 2000
+
+# 知识库配置
+knowledge:
+  vector_store:
+    type: "chroma"  # 开发环境使用Chroma
+    path: "data/vector_stores/chroma"
+  
+  embedder:
+    type: "local"   # 开发环境使用本地模型
+    model_name: "BAAI/bge-small-en-v1.5"
+  
+  retriever:
+    type: "hybrid"
+    top_k: 5
+    similarity_threshold: 0.7
+
+# Agent配置
+agents:
+  default_agent: "simple_agent"
+  timeout: 30
+  max_iterations: 10
+
+# 缓存配置
+cache:
+  enabled: true
+  ttl: 3600  # 1小时
+
+# 数据目录
+paths:
+  data: "data"
+  logs: "logs"
+  knowledge_base: "data/knowledge"

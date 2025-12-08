@@ -1,0 +1,44 @@
+# 自适应机制智能体系统依赖包
+
+# 核心框架
+asyncio>=3.4.3
+pydantic>=2.0.0
+typing-extensions>=4.7.0
+
+# 向量数据库和嵌入
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+openai>=1.0.0
+
+# 文档处理
+PyPDF2>=3.0.0
+docx2txt>=0.8
+python-docx>=1.1.0
+
+# 工具调用
+subprocess32>=3.5.4; python_version < "3.8"
+psutil>=5.9.0
+
+# 配置管理
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# 日志和监控
+loguru>=0.7.0
+structlog>=23.1.0
+
+# Web服务（未来扩展）
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+websockets>=11.0.0
+
+# 测试和开发
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+flake8>=6.0.0
+
+# 其他工具
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0

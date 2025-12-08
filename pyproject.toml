@@ -1,0 +1,305 @@
+# adpt-mech-agent/pyproject.toml
+
+[project]
+# 项目基础信息
+name = "adpt-mech-agent"
+version = "0.1.0"
+description = "自适应机制智能体框架，支持知识库RAG集成"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "lijunma", email = "lijunma.js@chinatelecom.cn" }
+]
+maintainers = [
+    { name = "zzzx", email = "team@example.com" }
+]
+keywords = ["ai-agent", "rag", "knowledge-base", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# 项目URLs
+urls = { Homepage = "https://github.com/yourname/adpt-mech-agent" }
+documentation = "https://adpt-mech-agent.readthedocs.io/"
+repository = "https://github.com/yourname/adpt-mech-agent"
+changelog = "https://github.com/yourname/adpt-mech-agent/blob/main/CHANGELOG.md"
+
+# 入口点（重要！）
+[project.scripts]
+adpt-agent = "main:main"
+knowledge-cli = "scripts.knowledge_cli:main"
+
+# 依赖管理
+dependencies = [
+    # 核心依赖
+    "pydantic>=2.5.0",
+    "typing-extensions>=4.8.0",
+    # 异步支持
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.2.0",
+    "asyncio>=3.4.3",
+    # 配置管理
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    # 日志
+    "structlog>=23.1.0",
+    # 可选依赖（默认安装）
+    "colorama>=0.4.6; platform_system == 'Windows'",
+]
+
+# 可选依赖组（按需安装）
+[project.optional-dependencies]
+# 向量存储选项
+qdrant = ["qdrant-client>=1.6.7"]
+chroma = ["chromadb>=0.4.18"]
+milvus = ["pymilvus>=2.3.0"]
+
+# 嵌入模型选项
+openai = ["openai>=1.3.0"]
+bge = [
+    "sentence-transformers>=2.2.2",
+    "torch>=2.0.0",
+    "transformers>=4.35.0",
+]
+local-embeddings = ["fastembed>=0.2.0"]
+
+# 文档处理
+doc-processing = [
+    "pypdf>=3.17.0",
+    "pdf2image>=1.16.3",
+    "markdown-it-py>=3.0.0",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.2",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.3",
+]
+
+# 检索增强
+retrieval = [
+    "rank-bm25>=0.2.2",
+    "tiktoken>=0.5.1", # token计数
+]
+
+# LLM集成
+llm-openai = ["openai>=1.3.0"]
+llm-anthropic = ["anthropic>=0.7.0"]
+llm-local = [
+    "vllm>=0.2.0",
+    "transformers>=4.35.0",
+]
+
+# 开发工具
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.11.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.5.0",
+    "ipython>=8.17.0",
+    "jupyter>=1.0.0",
+]
+
+# 测试
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "pytest-xdist>=3.5.0", # 并行测试
+]
+
+# 文档
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-autorefs>=0.5.0",
+]
+
+# 性能监控
+monitoring = [
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.22.0",
+    "opentelemetry-sdk>=1.22.0",
+]
+
+# 完整安装（所有功能）
+full = [
+    "qdrant-client>=1.6.7",
+    "sentence-transformers>=2.2.2",
+    "openai>=1.3.0",
+    "pypdf>=3.17.0",
+    "rank-bm25>=0.2.2",
+    "pytest>=7.4.0",
+    "black>=23.11.0",
+]
+
+# 构建系统配置（必须）
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# 工具配置部分
+[tool.setuptools]
+# 包发现配置
+packages = ["src"]
+package-dir = { "" = "src" }
+
+# 包含数据文件
+[tool.setuptools.package-data]
+"*" = ["*.yml", "*.yaml", "*.json", "*.md"]
+
+# 排除文件
+[tool.setuptools.exclude-package-data]
+"*" = ["*.pyc", "__pycache__/*", "*.so", "*.dll"]
+
+# 工具配置：代码质量
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_sort_within_sections = true
+known_first_party = ["adpt_mech_agent"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+# 严格模式可选配置
+# strict = true
+
+[tool.ruff]
+# 启用所有规则，然后选择性地禁用
+select = ["E", "F", "B", "I", "N", "UP", "YTT", "ANN", "S", "COM", "C4", "DTZ", "EM", "ISC", "G", "INP", "PIE", "PYI", "RET", "SIM", "TCH", "TID", "ARG", "BLE", "FIX", "AIR", "LOG"]
+ignore = [
+    "ANN101", # 允许没有类型注解的self参数
+    "ANN102", # 允许没有类型注解的cls参数
+    "D107", # 允许缺少__init__的docstring
+    "S101", # 允许使用assert
+    "F841", # 允许未使用的变量（在开发时有用）
+]
+
+# 每行最大长度
+line-length = 88
+
+# 排除的目录
+exclude = [
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+]
+
+[tool.pytest.ini_options]
+# pytest配置
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--asyncio-mode=auto",
+]
+markers = [
+    "unit: unit tests",
+    "integration: integration tests",
+    "slow: slow running tests",
+    "e2e: end-to-end tests",
+]
+
+# 项目结构定义（可选，用于文档生成）
+[tool.structure]
+src-layout = true
+modules = [
+    { name = "agents", description = "智能体框架与实现" },
+    { name = "knowledge", description = "知识库RAG系统" },
+    { name = "adaptive", description = "自适应协调层" },
+    { name = "shared", description = "共享工具和配置" },
+]
+
+# 任务运行器配置（如使用 python -m build）
+[tool.taskipy]
+tasks = {}
+
+# 环境配置（用于动态加载）
+[tool.env]
+# 环境变量默认值
+defaults = { ENVIRONMENT = "development", LOG_LEVEL = "INFO" }
+
+# 环境特定配置
+[tool.env.development]
+DEBUG = "true"
+DATABASE_URL = "sqlite:///./data/dev.db"
+VECTOR_STORE_URL = "http://localhost:6333"
+
+[tool.env.production]
+DEBUG = "false"
+DATABASE_URL = "postgresql://user:pass@localhost/prod"
+VECTOR_STORE_URL = "http://vector-store:6333"
+
+# 项目元数据扩展（用于文档）
+[project.metadata]
+# 扩展的元数据
+support = { email = "support@example.com", forum = "https://github.com/yourname/adpt-mech-agent/discussions" }
+funding = { github = "yourname" }
+social = { twitter = "@yourhandle", mastodon = "@yourhandle@mastodon.social" }
+
+# 兼容性信息
+[project.compatibility]
+python-versions = ["3.9", "3.10", "3.11", "3.12"]
+os = ["Linux", "macOS", "Windows"]
+arch = ["x86_64", "arm64"]
+
+# 发布配置
+[project.release]
+# 发布到PyPI的配置
+pypi-repository = "https://upload.pypi.org/legacy/"
+sign-with = "gpg"
