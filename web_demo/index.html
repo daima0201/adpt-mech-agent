@@ -1,160 +1,1956 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>量子销售经理 - AI智能体演示</title>
+    <title>智能体控制台 - Agent Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+
     <style>
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        
+
+        /* 整体布局优化 */
+        /* .flex.h-screen {
+            gap: 0;
+            height: 100vh;
+            max-height: 100vh;
+            flex-direction: column;
+            position: relative;
+        } */
+
+        /* Header 固定定位 */
+        header {
+            height: 64px;
+            z-index: 1000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1f2937;
+            border-bottom: 1px solid #374151;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Main 区域自适应 */
+        main {
+            flex: 1;
+            margin-top: 64px;
+            margin-bottom: 80px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 0;
+        }
+
+        /* Footer 固定定位 */
+        footer {
+            height: 80px;
+            z-index: 1000;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1f2937;
+            border-top: 1px solid #374151;
+            backdrop-filter: blur(10px);
+        }
+
         .chat-container {
-            height: calc(100vh - 80px);
+            height: calc(100vh - 144px);
         }
-        
+
+        .message-stream {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing-indicator {
+            display: inline-block;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* 消息气泡基础样式 */
         .message-bubble {
             max-width: 70%;
-            word-wrap: break-word;
+            min-width: 200px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            margin: 8px 0;
+            padding: 16px 20px;
         }
-        
+
+        /* 用户消息样式 */
         .user-message {
-            background-color: #3b82f6;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
             color: white;
             margin-left: auto;
+            border-bottom-right-radius: 6px;
+            border: 1px solid #0369a1;
+            box-shadow: 0 4px 20px rgba(14, 165, 233, 0.25);
         }
-        
-        .assistant-message {
-            background-color: #e5e7eb;
-            color: #374151;
+
+        .user-message::before {
+            content: '';
+            position: absolute;
+            right: -7px;
+            top: 15px;
+            width: 14px;
+            height: 14px;
+            background: #0389cc;
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+            transform: rotate(135deg);
         }
-        
-        .streaming-indicator {
-            animation: pulse 2s infinite;
+
+        /* AI消息样式 */
+        .ai-message {
+            background: linear-gradient(135deg, #1e293b, #2d3748);
+            color: #f1f5f9;
+            border: 1px solid #4a5568;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+            margin-left: 0;
+            margin-right: auto;
         }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+        .ai-message::before {
+            content: '';
+            position: absolute;
+            left: -7px;
+            top: 15px;
+            width: 14px;
+            height: 14px;
+            background: #1e293b;
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+            transform: rotate(-45deg);
+            border: 1px solid #4a5568;
         }
-        
-        .sidebar-item:hover {
-            background-color: #f3f4f6;
+
+        .ai-message:hover {
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
         }
-        
-        .active-sidebar-item {
-            background-color: #3b82f6;
+
+        /* 消息内容样式 */
+        .message-content {
+            word-wrap: break-word;
+            line-height: 1.6;
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .ai-message .message-content {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #e2e8f0;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .user-message .message-content {
+            font-weight: 500;
             color: white;
+        }
+
+        /* 头像样式 */
+        .ai-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            margin-right: 16px;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+            flex-shrink: 0;
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            margin-left: 16px;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+            flex-shrink: 0;
+        }
+
+        /* 消息容器布局优化 */
+        .message-container {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .message-container.user {
+            justify-content: flex-end;
+        }
+
+        .message-container.ai {
+            justify-content: flex-start;
+        }
+
+        /* 输入区域优化 */
+        .input-area {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            min-height: auto;
+            max-height: 100px;
+            background-color: #1f2937;
+        }
+
+        .max-w-4xl.mx-auto {
+            max-width: 800px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1024px) {
+            .message-bubble {
+                max-width: 75%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* .flex.h-screen {
+                flex-direction: column;
+            } */
+            .message-bubble {
+                max-width: 92%;
+                min-width: 220px;
+                padding: 12px 16px;
+            }
+
+            .ai-avatar,
+            .user-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+
+            .message-content {
+                font-size: 14px;
+            }
+
+            /* 移动端Header调整 */
+            header {
+                padding: 8px 12px;
+            }
+
+            header h1 {
+                font-size: 16px;
+            }
+
+            header button span {
+                display: none;
+            }
+
+            header button {
+                padding: 6px 8px;
+            }
+
+            /* 移动端Footer调整 */
+            footer {
+                padding: 8px 12px;
+            }
+
+            .message-container {
+                padding: 0 12px;
+            }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #374151;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* 深色模式优化 */
+        .bg-gray-800 {
+            background-color: #1f2937 !important;
+        }
+
+        .bg-gray-700 {
+            background-color: #374151 !important;
+        }
+
+        .border-gray-700 {
+            border-color: #374151 !important;
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            backdrop-filter: blur(5px);
+        }
+
+        /* 欢迎消息样式 */
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #e2e8f0;
+        }
+
+        .welcome-icon {
+            font-size: 48px;
+            color: #0ea5e9;
+            margin-bottom: 16px;
+        }
+
+        .welcome-text {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+    </style>
+    <style>
+        .menu-container {
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+        }
+
+        .menu-container::-webkit-scrollbar {
+            width: 5px;
+            /* Chrome/Safari */
+        }
+
+        #menuContainerDiv {
+            max-width: calc(100% - 396px);
+        }
+
+        .menu-item {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .menu-item.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .menu-item.selected .menu-text {
+            color: white;
+        }
+
+        .menu-item.selected .delete-icon {
+            color: #ffd700;
         }
     </style>
 </head>
-<body class="bg-gray-50">
-    <!-- 顶部导航栏 -->
-    <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <h1 class="text-xl font-semibold text-gray-800">量子销售经理</h1>
-                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">演示版</span>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                    <i class="fas fa-download mr-2"></i>导出对话
-                </button>
-                <div class="relative">
-                    <img id="userAvatar" src="https://via.placeholder.com/40x40" alt="用户头像" 
-                         class="w-10 h-10 rounded-full cursor-pointer border-2 border-gray-300 hover:border-blue-500">
-                    <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">设置</a>
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">帮助</a>
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">退出</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
 
-    <!-- 主内容区域 -->
-    <div class="flex h-screen pt-16">
-        <!-- 左侧边栏 -->
-        <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
-            <!-- 角色卡切换区域 -->
-            <div class="p-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-800 mb-3">智能体角色</h2>
-                <div id="agentCards" class="space-y-2">
-                    <!-- 角色卡将在这里动态生成 -->
-                </div>
-            </div>
-            
-            <!-- 工具选择区域 -->
-            <div class="p-4 border-b border-gray-200 flex-1">
-                <h2 class="text-lg font-medium text-gray-800 mb-3">可用工具</h2>
-                <div id="toolList" class="space-y-2">
-                    <!-- 工具列表将在这里动态生成 -->
-                </div>
-            </div>
-            
-            <!-- 底部状态信息 -->
-            <div class="p-4 border-t border-gray-200">
-                <div class="text-sm text-gray-600">
-                    <div class="flex items-center justify-between mb-1">
-                        <span>会话ID:</span>
-                        <span id="sessionId" class="font-mono text-xs">-</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>状态:</span>
-                        <span id="connectionStatus" class="text-green-600">已连接</span>
+<body class="bg-gray-900 text-white overflow-x-auto">
+<div class="flex h-screen">
+    <!-- 左侧边栏 -->
+    <div class="min-w-[270px] w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+        <!-- 角色卡区域 -->
+        <div class="p-4 border-b border-gray-700">
+            <h2 class="text-lg font-semibold mb-3">角色选择</h2>
+            <div class="space-y-2">
+                <div
+                        class="agent-card bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-600 transition-colors active-agent">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                            <i class="fas fa-robot text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">量子加密文件销售助手</h3>
+                            <p class="text-sm text-gray-300">企业级加密安全解决方案</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 右侧聊天区域 -->
-        <div class="flex-1 flex flex-col">
-            <!-- 消息显示区域 -->
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
-                <!-- 欢迎消息 -->
-                <div class="text-center py-8">
-                    <div class="inline-block bg-blue-50 rounded-lg px-6 py-4">
-                        <h3 class="text-lg font-medium text-blue-800 mb-2">欢迎使用量子销售经理</h3>
-                        <p class="text-blue-600">我是专业的量子计算解决方案销售专家，随时为您提供咨询服务</p>
+        <!-- 工具选择区域 -->
+        <div class="p-4 border-b border-gray-700">
+            <h2 class="text-lg font-semibold mb-3">可用工具</h2>
+            <div class="space-y-2">
+                <div class="tool-item bg-gray-700 rounded-lg p-3 cursor-not-allowed opacity-50">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-search text-blue-400"></i>
+                        <span>知识库查询</span>
                     </div>
+                    <p class="text-xs text-gray-400 mt-1">暂未启用</p>
+                </div>
+                <div class="tool-item bg-gray-700 rounded-lg p-3 cursor-not-allowed opacity-50">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-file-alt text-green-400"></i>
+                        <span>文档分析</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">暂未启用</p>
                 </div>
             </div>
+        </div>
 
-            <!-- 输入区域 -->
-            <div class="border-t border-gray-200 p-4 bg-white">
-                <div class="flex space-x-3">
-                    <div class="flex-1">
-                        <textarea 
-                            id="messageInput" 
-                            placeholder="请输入您的问题..." 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                            rows="2"
-                        ></textarea>
+        <!-- 底部用户区域 -->
+        <div class="mt-auto p-4">
+            <div class="flex items-center space-x-3">
+                <div class="relative group">
+                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center cursor-pointer"
+                         id="userAvatar">
+                        <i class="fas fa-user text-white"></i>
                     </div>
-                    <button 
-                        id="sendButton" 
-                        class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <!-- 配置菜单 -->
+                    <div class="absolute bottom-full left-0 mb-2 w-48 bg-gray-700 rounded-lg shadow-lg hidden group-hover:block z-10"
+                         id="configMenu">
+                        <div class="p-2">
+                            <button class="w-full text-left px-3 py-2 rounded hover:bg-gray-600 transition-colors"
+                                    onclick="exportConversation()">
+                                <i class="fas fa-download mr-2"></i>导出对话记录
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="mt-2 flex justify-between items-center text-sm text-gray-500">
-                    <span>按 Enter 发送，Shift + Enter 换行</span>
-                    <span id="typingIndicator" class="hidden">
-                        <i class="fas fa-circle text-blue-500 streaming-indicator mr-1"></i>
-                        正在思考中...
-                    </span>
+                <div>
+                    <p class="font-medium">访客用户</p>
+                    <p class="text-sm text-gray-400">演示模式</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript -->
-    <script src="app.js"></script>
+    <!-- 主聊天区域 -->
+    <div class="min-w-[790px] flex-1 flex flex-col">
+        <!-- 顶部状态栏 -->
+        <div class="bg-gray-800 border-b border-gray-700 p-4">
+            <div class="relative flex justify-between items-center">
+                <h1 id="chartTitle" class="text-xl font-bold">智能体控制台 - Agent Console</h1>
+                <!-- 控制区域 -->
+                <div id="menuContainerDiv" class="flex items-center hidden">
+                    <button id="scrollLeft"
+                            class="text-indigo-600 rounded-lg shadow transition-all duration-300 transform hover:scale-105 mr-3">
+                        <i class="fas fa-chevron-left text-lg"></i>
+                    </button>
+
+                    <div id="menuContainer" class="flex overflow-x-auto space-x-3 menu-container hide-scrollbar">
+                        <!-- 菜单项将通过JavaScript动态插入 -->
+                    </div>
+
+                    <button id="scrollRight"
+                            class="text-indigo-600 rounded-lg shadow transition-all duration-300 transform hover:scale-105 ml-3">
+                        <i class="fas fa-chevron-right text-lg"></i>
+                    </button>
+                </div>
+                <div class="min-w-[376px] flex items-center space-x-4">
+                    <!-- 智能体模板管理按钮 -->
+                    <button
+                            class="px-4 py-2 bg-purple-600 rounded-lg text-sm hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                            onclick="openTemplateManager()">
+                        <i class="fas fa-cubes"></i>
+                        <span>智能体模板管理</span>
+                    </button>
+
+                    <!-- 智能体实例菜单按钮 -->
+                    <button
+                            class="px-4 py-2 bg-green-600 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center space-x-2"
+                            onclick="openInstanceMenu()">
+                        <i class="fas fa-play-circle"></i>
+                        <span>智能体实例菜单</span>
+                    </button>
+
+                    <!-- 预留设置按钮 -->
+                    <button class="px-3 py-2 bg-gray-600 rounded-lg text-sm hover:bg-gray-500 transition-colors">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 聊天消息区域 -->
+        <div class="flex-1 overflow-y-auto p-4" id="chatArea">
+            <div class="max-w-4xl mx-auto space-y-4">
+                <!-- 欢迎消息 -->
+                <div class="flex items-center justify-center h-full min-h-[60vh]">
+                    <div
+                            class="inline-flex items-center space-x-4 bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl px-10 py-6 border border-blue-500/20 shadow-2xl">
+                        <i class="fas fa-robot text-blue-300 text-2xl"></i>
+                        <span class="text-xl font-medium text-gray-200">请从右侧实例菜单中选择一个智能体实例开始对话</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="border-t border-gray-700 p-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex space-x-3">
+                    <div class="flex-1 relative">
+                            <textarea id="messageInput" placeholder="请输入您的问题..."
+                                      class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-base min-h-[44px] max-h-[120px] resize-none overflow-y-auto leading-normal transition-all duration-200"
+                                      rows="1" disabled></textarea>
+                        <!-- 字符计数器 -->
+                        <div class="absolute bottom-2 right-3 text-xs text-gray-400 pointer-events-none">
+                            <span id="charCount">0</span>/1000
+                        </div>
+                    </div>
+                    <button id="sendButton"
+                            class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-base h-[44px] w-[44px] flex items-center justify-center shadow-lg hover:shadow-blue-500/30 active:scale-95"
+                            disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 智能体模板管理弹窗 -->
+    <div id="templateManagerModal"
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[70vh] overflow-hidden">
+            <div class="flex justify-between items-center p-6 border-b border-gray-700">
+                <h3 class="text-xl font-bold">智能体模板管理</h3>
+                <button onclick="closeTemplateManager()" class="text-gray-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto max-h-[50vh]">
+                <!-- 模板列表 -->
+                <div class="space-y-4" id="templateList">
+                    <div class="template-item bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold text-lg">量子加密文件销售助手</h4>
+                                <p class="text-gray-300 text-sm mt-1">企业级加密安全解决方案，支持多轮对话和文档分析</p>
+                            </div>
+                            <button onclick="createInstanceFromTemplate('template_quantum_sales')"
+                                    class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>创建实例
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="template-item bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold text-lg">客户服务助手</h4>
+                                <p class="text-gray-300 text-sm mt-1">通用客户服务场景，支持FAQ查询和工单处理</p>
+                            </div>
+                            <button onclick="createInstanceFromTemplate('template_customer_service')"
+                                    class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>创建实例
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="template-item bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold text-lg">数据分析助手</h4>
+                                <p class="text-gray-300 text-sm mt-1">数据分析和可视化工具，支持图表生成和报告编写</p>
+                            </div>
+                            <button onclick="createInstanceFromTemplate('template_data_analysis')"
+                                    class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>创建实例
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-700 flex justify-end">
+                <button onclick="closeTemplateManager()"
+                        class="px-4 py-2 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 智能体实例菜单弹窗 -->
+    <div id="instanceMenuModal"
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b border-gray-700">
+                <h2 class="text-xl font-bold">在线智能体实例</h2>
+                <p class="text-gray-400 text-sm mt-1">管理运行中的智能体实例</p>
+            </div>
+
+            <div class="p-4 max-h-[50vh] overflow-y-auto">
+                <div class="space-y-3" id="instanceList">
+                    <!-- 实例列表将通过JavaScript动态生成 -->
+                    <div class="bg-gray-700 rounded-lg p-4 animate-pulse">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="h-4 bg-gray-600 rounded w-24 mb-2"></div>
+                                <div class="h-3 bg-gray-600 rounded w-32"></div>
+                            </div>
+                            <div class="h-8 bg-gray-600 rounded w-20"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-700 flex justify-end">
+                <button onclick="closeInstanceMenu()"
+                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let isStreaming = false;
+        let currentSessionId = null;
+        let currentStreamResponse = '';
+        let websocket = null;
+        let isReceivingResponse = false;
+        const menus = [];
+        let selectedIndex = -1; // 当前选中的菜单索引
+        let all_messages = {};
+        const chatArea = document.getElementById('chatArea');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async function () {
+            console.log('页面加载完成，开始初始化...');
+
+            // 绑定事件
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+
+            // 动态调整输入框高度
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('input', function () {
+                // 动态调整输入框高度
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            messageInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter' && !isStreaming) {
+                    if (e.shiftKey) {
+                        // Shift+Enter 换行
+                        return;
+                    }
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            try {
+                // 初始化agent服务
+                await initializeAgentService();
+                document.getElementById('messageInput').disabled = false;
+                document.getElementById('sendButton').disabled = false;
+
+            } catch (error) {
+                console.error('初始化失败:', error);
+                addErrorMessage('系统初始化失败，请刷新页面重试');
+            }
+        });
+
+        // 初始化agent服务
+        async function initializeAgentService() {
+            try {
+                console.log('正在初始化agent服务...');
+
+                // 检查后端是否可用
+                try {
+                    const healthResponse = await fetch('/api/health');
+                    if (!healthResponse.ok) {
+                        throw new Error('后端服务不可用');
+                    }
+                } catch (error) {
+                    console.warn('健康检查失败，尝试直接连接agents接口:', error);
+                }
+
+                // 确保有可用的agent
+                await ensureActiveAgent();
+
+                console.log('agent服务初始化完成');
+            } catch (error) {
+                console.error('初始化agent服务失败:', error);
+                // addErrorMessage('无法连接到智能体服务，请检查后端是否正常运行');
+            }
+        }
+
+        // 确保有活跃的agent
+        async function ensureActiveAgent() {
+            try {
+                console.log('开始检查活跃agent...');
+                const agents = await listAgents();
+                console.log('获取到的agents列表:', agents);
+
+                if (!agents || agents.length === 0) {
+                    console.log('没有找到agent，创建新agent...');
+                    const newAgentResult = await createAgent(1); // 使用默认配置ID
+                    console.log('创建agent结果:', newAgentResult);
+
+                    // 从创建结果中提取agent_id
+                    let agentId = null;
+                    if (newAgentResult && newAgentResult.agent_id) {
+                        agentId = newAgentResult.agent_id;
+                    } else if (newAgentResult && newAgentResult.data && newAgentResult.data.agent_id) {
+                        agentId = newAgentResult.data.agent_id;
+                    } else {
+                        // 如果API返回格式不同，使用默认命名
+                        agentId = 'agent_simple_quantum_sales_manager_' + Date.now();
+                    }
+
+                    localStorage.setItem('activeAgentId', agentId);
+                    console.log('设置新创建的agent为活跃agent:', agentId);
+                } else {
+                    console.log('找到现有agent:', agents);
+                    // 设置第一个agent为活跃agent
+                    if (agents.length > 0) {
+                        const firstAgent = agents[0];
+                        localStorage.setItem('activeAgentId', firstAgent);
+                        console.log('设置现有agent为活跃agent:', firstAgent);
+                    }
+                }
+
+                console.log('活跃agent检查完成');
+            } catch (error) {
+                console.error('确保agent存在失败:', error);
+                throw error;
+            }
+        }
+
+        // 列出所有agent
+        async function listAgents() {
+            try {
+                console.log('正在获取agent列表...');
+                const response = await fetch('/api/agents/list');
+                console.log('agent列表响应状态:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('agent列表请求失败:', response.status, errorText);
+                    throw new Error(`HTTP错误! 状态: ${response.status}, 内容: ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('agent列表响应数据:', result);
+
+                // 根据实际API响应结构调整
+                if (result.success && result.data && result.data.agents) {
+                    // 返回agent ID列表
+                    return result.data.agents;
+                } else if (result.agents) {
+                    // 直接返回agent ID列表
+                    return result.agents;
+                } else if (result.data && Array.isArray(result.data)) {
+                    // 如果data是数组，直接返回
+                    return result.data;
+                } else if (result.success && result.data) {
+                    // 如果data不是数组但存在，尝试提取agent_id
+                    const agents = [];
+                    for (const key in result.data) {
+                        if (result.data[key] && typeof result.data[key] === 'string') {
+                            agents.push(result.data[key]);
+                        }
+                    }
+                    return agents.length > 0 ? agents : [];
+                }
+
+                console.warn('未找到有效的agent列表数据');
+                return [];
+            } catch (error) {
+                console.error('获取agent列表失败:', error);
+                return [];
+            }
+        }
+
+        // 创建agent
+        async function createAgent(configId) {
+            try {
+                const response = await fetch('/api/agents/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({agent_config_id: configId})
+                });
+
+                if (!response.ok) {
+                    throw new Error(`创建agent失败! 状态: ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log('创建agent成功:', result.data);
+                    return result.data;
+                } else {
+                    throw new Error('创建agent失败: ' + JSON.stringify(result));
+                }
+            } catch (error) {
+                console.error('创建agent失败:', error);
+                throw error;
+            }
+        }
+
+        // 获取活跃的agent_id
+        function getActiveAgentId() {
+            const agentId = localStorage.getItem('activeAgentId');
+            console.log('当前活跃agent_id:', agentId);
+            return agentId;
+        }
+
+        // WebSocket连接
+        async function connectWebSocket() {
+            return new Promise((resolve, reject) => {
+                const wsUrl = window.location.protocol === 'https:' ?
+                    `wss://${window.location.host}/ws/${Date.now()}` :
+                    `ws://${window.location.host}/ws/${Date.now()}`;
+
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = () => {
+                    console.log('WebSocket连接已建立');
+                    console.log('WebSocket URL:', wsUrl);
+                    resolve();
+                };
+
+                websocket.onmessage = (event) => {
+                    console.log('收到原始WebSocket消息:', event.data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        console.error('解析WebSocket消息失败:', error, event.data);
+                    }
+                };
+
+                websocket.onerror = (error) => {
+                    console.error('WebSocket错误:', error);
+                    reject(error);
+                };
+
+                websocket.onclose = () => {
+                    console.log('WebSocket连接已关闭');
+                };
+            });
+        }
+
+        // 处理WebSocket消息
+        function handleWebSocketMessage(data) {
+            console.log('收到WebSocket消息:', data);
+            switch (data.type) {
+                case 'response_start':
+                    isReceivingResponse = true;
+                    currentStreamResponse = '';
+                    break;
+
+                case 'response_chunk':
+                    if (isReceivingResponse) {
+                        currentStreamResponse += data.content || data.chunk || '';
+                        updateAIMessage(currentStreamResponse);
+                    }
+                    break;
+
+                case 'response_end':
+                    isReceivingResponse = false;
+                    break;
+
+                case 'error':
+                    console.error('服务器错误:', data.message);
+                    addErrorMessage(data.message);
+                    isReceivingResponse = false;
+                    break;
+            }
+        }
+
+        // 更新AI消息（流式显示）
+        function updateAIMessage(content) {
+            const chatArea = document.getElementById('chatArea');
+            let aiMessageDiv = chatArea.querySelector('.ai-message:last-child');
+
+            if (!aiMessageDiv || !aiMessageDiv.closest('.flex').querySelector('.fa-robot')) {
+                // 创建新的AI消息容器
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center mr-2 flex-shrink-0">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="message-bubble ai-message rounded-lg p-4">
+                        ${content.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+                chatArea.appendChild(messageDiv);
+            } else {
+                // 更新现有消息
+                aiMessageDiv.innerHTML = content.replace(/\n/g, '<br>');
+            }
+
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // 添加错误消息
+        function addErrorMessage(message) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex mb-4 justify-center';
+            messageDiv.innerHTML = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <strong>错误:</strong> ${message}
+                </div>
+            `;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // 逐字显示消息效果
+        function typeMessage(element, text) {
+            element.innerHTML = '';
+            let index = 0;
+
+            const type = () => {
+                if (index < text.length) {
+                    element.textContent += text.charAt(index);
+                    index++;
+                    this.scrollToBottom();
+                    setTimeout(type, 20); // 每20ms显示一个字符
+                }
+            };
+
+            type();
+        };
+
+        // 添加用户消息
+        async function addUserMessage(message) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start mb-6 justify-end';
+            messageDiv.innerHTML = `
+                <div class="message-bubble user-message">
+                    <div class="message-content">
+                        ${message.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+            `;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // 添加AI消息（支持流式输出）
+        async function addAIMessage(message, isStreaming = false) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start mb-6';
+
+            // 为流式消息生成唯一ID
+            const messageId = isStreaming ? 'msg_' + Date.now() : null;
+            // const markdownText = `# Hello &zwnj;**World**&zwnj;!`;
+            message = await markdownToHtml(message);
+            console.log('message', message);
+            messageDiv.innerHTML = `
+                <div class="ai-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                `;
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble ai-message';
+            messageId ? bubbleDiv.setAttribute('id', messageId) : null;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            if (isStreaming) {
+                typeMessage(contentDiv, message);
+            } else {
+                contentDiv.innerHTML = `
+                        ${message}
+                        ${isStreaming ? '<span class="typing-indicator">▊</span>' : ''}
+                    `;
+            }
+            bubbleDiv.appendChild(contentDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            return messageId;
+        }
+
+        function Parsing_markdownit(md_text) {
+            var md = window.markdownit(); // 使用默认选项创建MarkdownIt实例
+            var result = md.render(md_text); // 渲染Markdown到HTML
+            console.log(result); // 输出HTML内容到控制台
+            return result;
+        }
+
+        function updateChatHistory() {
+            clearChatArea();
+            const chatArea = document.getElementById('chatArea');
+            all_messages[currentSessionId] = all_messages[currentSessionId] || [];
+            console.log(all_messages[currentSessionId]);
+            all_messages[currentSessionId].forEach(msg => {
+                if (msg.sender === 'User') {
+                    setTimeout(() => addUserMessage(msg.content), 50);
+                } else if (msg.sender === 'AI') {
+                    setTimeout(() => addAIMessage(msg.content), 50);
+                }
+            });
+        }
+
+        // 发送消息到API
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message || isStreaming) return;
+
+            // 清空输入框
+            input.value = '';
+
+            // 添加用户消息
+            await addUserMessage(message);
+            all_messages[currentSessionId] = all_messages[currentSessionId] || [];
+            all_messages[currentSessionId].push({
+                sender: 'User',
+                content: message
+            });
+            try {
+                // 获取agent_id - 确保有活跃的agent
+                let agentId = await getActiveAgentId();
+                if (!agentId) {
+                    // 如果没有活跃agent，重新初始化
+                    await ensureActiveAgent();
+                    agentId = await getActiveAgentId();
+                    if (!agentId) {
+                        addErrorMessage("没有找到可用的智能体，请先创建智能体");
+                        return;
+                    }
+                }
+
+                console.log('发送消息到agent:', agentId, '消息:', message);
+
+                // 使用HTTP API发送消息
+                await sendMessageViaHttp(agentId, message);
+
+                // 设置接收响应的标志
+                isReceivingResponse = true;
+
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                const message = '抱歉，暂时无法处理您的请求。请稍后再试。';
+                await addAIMessage(message);
+                all_messages[currentSessionId] = all_messages[currentSessionId] || [];
+                all_messages[currentSessionId].push({
+                    sender: 'AI',
+                    content: message
+                });
+            }
+        }
+
+        // 等待响应完成
+        function waitForResponseComplete() {
+            return new Promise((resolve, reject) => {
+                const maxWaitTime = 30000; // 30秒超时
+                const startTime = Date.now();
+
+                const checkInterval = setInterval(() => {
+                    if (!isReceivingResponse) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    } else if (Date.now() - startTime > maxWaitTime) {
+                        clearInterval(checkInterval);
+                        reject(new Error('响应超时'));
+                    }
+                }, 100);
+            });
+        }
+
+
+        // 导出对话记录
+        function exportConversation() {
+            const chatArea = document.getElementById('chatArea');
+            const messages = chatArea.querySelectorAll('.flex.mb-4');
+
+            let conversationText = '量子销售经理智能体对话记录\n\n';
+
+            messages.forEach(message => {
+                const isUser = message.classList.contains('justify-end');
+                const bubble = message.querySelector('.message-bubble');
+                if (bubble) {
+                    const role = isUser ? '用户' : 'AI助手';
+                    const content = bubble.textContent || bubble.innerText;
+                    conversationText += `${role}: ${content}\n\n`;
+                }
+            });
+
+            const blob = new Blob([conversationText], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `quantum_sales_conversation_${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 处理流式响应
+        async function handleStreamResponse(response) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let aiMessageContent = '';
+            let aiMessageElement = null;
+
+            try {
+                while (true) {
+                    const {done, value} = await reader.read();
+
+                    if (done) break;
+
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n');
+
+                    // 保留最后一行（可能不完整）
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.trim() === '') continue;
+
+                        console.log('接收到行:', line);
+
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.slice(6); // 移除 'data: '
+                            // 简化流式响应处理逻辑
+                            try {
+                                const responseData = JSON.parse(dataStr);
+                                console.log('流式响应数据:', responseData);
+
+                                // 处理不同的响应格式
+                                let content = '';
+                                if (responseData.content) {
+                                    content = responseData.content;
+                                } else if (responseData.message) {
+                                    content = responseData.message;
+                                } else if (responseData.text) {
+                                    content = responseData.text;
+                                } else if (responseData.chunk) {
+                                    content = responseData.chunk;
+                                } else if (typeof responseData === 'string') {
+                                    content = responseData;
+                                }
+
+                                if (content) {
+                                    // 如果是第一次收到内容，创建AI消息元素
+                                    if (!aiMessageElement) {
+                                        aiMessageElement = createAIMessageElement();
+                                    }
+
+                                    // 追加内容到AI消息
+                                    aiMessageContent += content;
+                                    aiMessageElement.innerHTML = aiMessageContent.replace(/\n/g, '<br>');
+                                    scrollToBottom();
+                                }
+
+                                // 检查是否是结束标记
+                                if (responseData.type === 'stream_end' || responseData.is_final) {
+                                    console.log('流式响应结束');
+                                    break;
+                                }
+                            } catch (parseError) {
+                                console.error('解析流数据失败:', parseError, '原始数据:', dataStr);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('读取流数据失败:', error);
+            } finally {
+                // 标记接收响应完成
+                isReceivingResponse = false;
+                console.log('流式响应处理完成');
+            }
+        }
+
+        // 添加错误消息
+        function addErrorMessage(message) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex mb-4';
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'w-8 h-8 rounded-full bg-red-500 flex items-center justify-center mr-3';
+            avatarDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-white"></i>';
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble bg-red-100 text-red-800 px-4 py-2 rounded-lg max-w-xs lg:max-w-md';
+            bubbleDiv.textContent = message;
+
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatArea.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // 创建AI消息元素
+        function createAIMessageElement() {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex mb-4';
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center mr-3';
+            avatarDiv.innerHTML = '<i class="fas fa-robot text-white"></i>';
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble bg-gray-100 text-gray-800 px-4 py-2 rounded-lg max-w-xs lg:max-w-md';
+
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatArea.appendChild(messageDiv);
+
+            scrollToBottom();
+            return bubbleDiv;
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // 使用流式API发送消息
+        async function sendMessageViaHttp(agentId, message) {
+            try {
+                console.log('发送消息到agent:', agentId, '消息:', message);
+
+                // 如果agentId为空，先获取有效的agent_id
+                if (!agentId) {
+                    agentId = await getActiveAgentId();
+                    if (!agentId) {
+                        throw new Error('无法获取有效的agent_id');
+                    }
+                }
+
+                const url = `/api/agents/${agentId}/stream`;
+                console.log('请求URL:', url);
+
+                const requestBody = {
+                    message: message,
+                    session_id: currentSessionId || 'default_session'
+                };
+
+                console.log('请求体:', JSON.stringify(requestBody));
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('响应状态:', response.status);
+                console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('响应错误内容:', errorText);
+                    throw new Error(`HTTP错误! 状态: ${response.status}, 内容: ${errorText}`);
+                }
+
+                // 处理流式响应
+                await handleStreamResponse(response);
+
+            } catch (error) {
+                console.error('流式API调用失败:', error);
+                addErrorMessage('抱歉，暂时无法处理您的请求。请稍后再试。');
+            }
+        }
+
+
+        // 全局状态管理
+        const appState = {
+            templates: [],
+            instances: [],
+            activeSessionId: null,
+            currentInstanceId: null
+        };
+
+        // Mock数据 - 用于前端开发测试
+        const mockTemplates = [
+            {
+                template_id: "template_001",
+                template_name: "量子加密文件销售助手",
+                description: "企业级加密安全解决方案销售专家"
+            },
+            {
+                template_id: "template_002",
+                template_name: "数据分析助手",
+                description: "专业的数据分析和可视化工具"
+            },
+            {
+                template_id: "template_003",
+                template_name: "客户服务助手3",
+                description: "全天候客户支持和问题解答"
+            }
+        ];
+
+        const mockInstances = [
+            {
+                instance_id: "instance_001",
+                template_id: "template_001",
+                status: "ACTIVE",
+                session_id: "session_001",
+                created_at: new Date().toISOString(),
+                last_active: new Date().toISOString()
+            },
+            {
+                instance_id: "instance_002",
+                template_id: "template_002",
+                status: "IDLE",
+                session_id: "session_002",
+                created_at: new Date(Date.now() - 3600000).toISOString(),
+                last_active: new Date(Date.now() - 1800000).toISOString()
+            },
+            {
+                instance_id: "instance_003",
+                template_id: "template_003",
+                status: "ERROR",
+                session_id: "session_003",
+                created_at: new Date(Date.now() - 7200000).toISOString(),
+                last_active: new Date(Date.now() - 300000).toISOString()
+            }
+        ];
+
+        // 状态颜色映射
+        const statusColors = {
+            ACTIVE: 'bg-green-500',
+            IDLE: 'bg-gray-500',
+            PROCESSING: 'bg-blue-500',
+            ERROR: 'bg-red-500'
+        };
+
+        const statusTexts = {
+            ACTIVE: '正在服务会话',
+            IDLE: '已创建未使用',
+            PROCESSING: '正在生成',
+            ERROR: '实例异常'
+        };
+
+        // 打开模板管理弹窗
+        function openTemplateManager() {
+            console.log('打开模板管理弹窗');
+            const modal = document.getElementById('templateManagerModal');
+            modal.classList.remove('hidden');
+
+            // 加载模板数据
+            loadTemplates();
+        }
+
+        // 关闭模板管理弹窗
+        async function closeTemplateManager() {
+            const modal = document.getElementById('templateManagerModal');
+            modal.classList.add('hidden');
+        }
+
+        const response = await fetch('/api/agents/templates/list');
+        if (!response.ok) {
+            throw new Error(`获取模板列表失败`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+            console.log('创建agent成功:', result.data);
+            appState.templates = result.data;
+        } else {
+            throw new Error(`获取模板列表失败`);
+        }
+
+        // 打开实例菜单弹窗
+        async function openInstanceMenu() {
+            console.log('打开实例菜单弹窗');
+            const modal = document.getElementById('instanceMenuModal');
+            modal.classList.remove('hidden');
+
+            // 加载实例数据
+            appState.templates = mockTemplates;
+            await loadInstances();
+        }
+
+        // 关闭实例菜单弹窗
+        function closeInstanceMenu() {
+            const modal = document.getElementById('instanceMenuModal');
+            modal.classList.add('hidden');
+        }
+
+        // 加载模板数据
+        async function loadTemplates() {
+            try {
+                console.log('开始加载模板数据...');
+
+                // 先使用mock数据，后续替换为真实API调用
+                // appState.templates = mockTemplates;
+                const response = await fetch('/api/agents/templates/list');
+                    if (!response.ok) {
+                        throw new Error(`获取模板列表失败`);
+                    }
+
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log('创建agent成功:', result.data);
+                        appState.templates = result.data;
+                    } else {
+                        throw new Error(`获取模板列表失败`);
+                    }
+                // 渲染模板列表
+                renderTemplateList();
+
+                console.log('模板数据加载完成:', appState.templates);
+            } catch (error) {
+                console.error('加载模板数据失败:', error);
+                addErrorMessage('加载模板数据失败，请稍后重试');
+            }
+        }
+
+        // 加载实例数据
+        async function loadInstances() {
+            try {
+                console.log('开始加载实例数据...');
+
+                // 先使用mock数据，后续替换为真实API调用
+                appState.instances = mockInstances;
+
+                // 渲染实例列表
+                renderInstanceList();
+
+                console.log('实例数据加载完成:', appState.instances);
+            } catch (error) {
+                console.error('加载实例数据失败:', error);
+                addErrorMessage('加载实例数据失败，请稍后重试');
+            }
+        }
+
+        // 渲染模板列表
+        function renderTemplateList() {
+            const templateListElement = document.getElementById('templateList');
+
+            if (!appState.templates || appState.templates.length === 0) {
+                templateListElement.innerHTML = `
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-cubes text-4xl mb-3"></i>
+                        <p>暂无可用模板</p>
+                    </div>
+                `;
+                return;
+            }
+
+            templateListElement.innerHTML = appState.templates.map(template => `
+                <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-white">${template.template_name}</h3>
+                            <p class="text-gray-300 text-sm mt-1">${template.description}</p>
+                        </div>
+                        <button onclick="createInstanceFromTemplate('${template.template_id}')"
+                                class="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap">
+                            <i class="fas fa-plus mr-1"></i>创建实例
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染实例列表
+        function renderInstanceList() {
+            const instanceListElement = document.getElementById('instanceList');
+
+            if (!appState.instances || appState.instances.length === 0) {
+                instanceListElement.innerHTML = `
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-play-circle text-4xl mb-3"></i>
+                        <p>暂无运行中的实例</p>
+                    </div>
+                `;
+                return;
+            }
+
+            instanceListElement.innerHTML = appState.instances.map((instance, index) => {
+                const template = appState.templates.find(t => t.template_id === instance.template_id);
+                console.log('template', template);
+                const templateName = template ? template.template_name : '未知模板' + (index + 1);
+                const statusColor = statusColors[instance.status] || 'bg-gray-500';
+                const statusText = statusTexts[instance.status] || '未知状态';
+
+                const buttonHtml = instance.status === 'ACTIVE' || instance.status === 'IDLE' ? `
+                    <button onclick="enterInstanceSession('${instance.instance_id}')"
+                            class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors  disabled:opacity-50 disabled:cursor-not-allowed">
+                        进入会话
+                    </button>
+                ` : `
+                    <button disabled
+                            class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors  disabled:opacity-50 disabled:cursor-not-allowed">
+                        进入会话
+                    </button>
+                `;
+
+                const returnHtml = `
+                    <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span class="w-2 h-2 ${statusColor} rounded-full"></span>
+                                    <span class="font-semibold text-white">${templateName}</span>
+                                    <span class="text-xs ${statusColor.replace('bg-', 'text-')}">${statusText}</span>
+                                </div>
+                                <p class="text-gray-300 text-sm">
+                                    会话：${instance.session_id ? '已绑定' : '未绑定'}
+                                </p>
+                                <p class="text-gray-400 text-xs mt-1">
+                                    创建时间：${new Date(instance.created_at).toLocaleString()}
+                                </p>
+                            </div>
+                            ` + buttonHtml +
+                    `
+                        </div>
+                    </div>
+                `;
+
+                return returnHtml;
+            }).join('');
+        }
+
+        // 从模板创建实例
+        async function createInstanceFromTemplate(templateId) {
+            try {
+                console.log('从模板创建实例:', templateId);
+
+                // 显示加载状态
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>创建中...';
+                button.disabled = true;
+
+                // TODO: 调用真实API创建实例
+                // const response = await fetch('/api/create_agent_instance', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ template_id: templateId })
+                // });
+
+                // 模拟API调用延迟
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 创建mock实例
+                const newInstance = {
+                    instance_id: `instance_${Date.now()}`,
+                    template_id: templateId,
+                    status: 'ACTIVE',
+                    session_id: `session_${Date.now()}`,
+                    created_at: new Date().toISOString(),
+                    last_active: new Date().toISOString()
+                };
+
+                // 添加到实例列表
+                appState.instances.push(newInstance);
+
+                // 刷新实例列表
+                renderInstanceList();
+
+                // 提示成功
+                showSuccessMessage('实例创建成功！');
+                // 恢复按钮状态
+                button.innerHTML = '<i class="fas fa-plus mr-1"></i>创建实例';
+                button.disabled = false;
+                closeTemplateManager();
+
+            } catch (error) {
+                console.error('创建实例失败:', error);
+                addErrorMessage('创建实例失败，请稍后重试');
+
+                // 恢复按钮状态
+                const button = event.target;
+                button.innerHTML = '<i class="fas fa-plus mr-1"></i>创建实例';
+                button.disabled = false;
+            }
+        }
+
+        // 进入实例会话
+        async function enterInstanceSession(instanceId) {
+            try {
+                console.log('进入实例会话:', instanceId);
+
+                const instance = appState.instances.find(i => i.instance_id === instanceId);
+                if (!instance) {
+                    throw new Error('找不到指定的实例');
+                }
+
+                // 设置当前实例和会话
+                appState.currentInstanceId = instanceId;
+                appState.activeSessionId = instance.session_id;
+
+                // 关闭实例菜单弹窗
+                closeInstanceMenu();
+
+                // 更新UI显示当前会话
+                updateActiveSessionDisplay(instance);
+
+                // 清空聊天区域并显示欢迎消息
+                clearChatArea();
+                // 添加初始消息
+                currentSessionId = instance.session_id;
+                all_messages[currentSessionId] = all_messages[currentSessionId] || [];
+                await renderMenus();
+                if (all_messages[currentSessionId].length === 0) {
+                    const message = `您好！非常荣幸能为您介绍我们的**量子加密文件产品**。
+
+这是一款由上海电信推出的，专门为商业秘密和工作秘密电子文件提供**全生命周期安全防护**的解决方案。简单来说，它就像为您的重要文件配备了一位“量子级”的专属保镖，从创建、存储、内部流转到外发，全程保驾护航。
+
+它的核心价值在于，**深度融合了量子加密技术**，能从根本上解决文件在传输和存储中被窃取、篡改的风险。具体来说，它主要能为您解决以下几大问题：
+
+1.  **加密防窃取，安全等级高**：产品采用**SM4国密算法 + 量子真随机密钥**，为每个文件生成独一无二的密钥，实现“一文一密”。这种加密方式能有效抵御未来超强算力的破解，为您的核心商密文件筑牢技术防线。
+2.  **智能分级，管理更规范**：面对海量文件，它可以基于您设定的商密目录和规则，**智能识别内容并自动建议密级**，实现核心商密、普通商密等的精准分类。还能明确保密期限、知悉范围，让文件管理既安全又高效。
+3.  **流转全可控，内外都安全**：
+    *   **内部流转**：员工通过安装客户端，可以直接用OA、邮箱等方式发送加密文件，也可以通过内部文档库安全分享。我们还有“密件收发”专用通道，支持设置“阅后即焚”、二次授权等精细权限。
+    *   **外部流转**：需要外发给合作伙伴时，可以将文件打包成加密外发包或生成加密链接。对方**无需安装任何软件**即可在限定次数、期限内查阅，并且您可以控制对方能否打印、下载，防止文件被二次扩散。
+4.  **操作留痕，泄密可追溯**：产品为加密文件添加多种防泄密水印，并记录文件全生命周期的所有操作日志（如谁、何时、做了什么）。一旦发生违规操作（如非法解密、截屏）或泄密事件，可以快速**预警并精准追溯到责任人**，形成强大的震慑和审计能力。
+5.  **广泛兼容，简单易用**：它支持Word、Excel、CAD图纸、PSD设计稿、图片、视频等**几乎所有常用文件格式**的加密，无需为不同文件准备不同方案。同时，产品已获得国密局、保密局等权威认证，完全符合国家对央企、党政机关等单位的商业秘密保护技术指引。
+
+**请问您来自哪个行业呢？** 比如是党政机关、央国企、金融机构，还是律所、医院或科研单位？了解您的具体场景后，我可以结合一些典型的应用案例，为您做更针对性的介绍。`;
+                    addAIMessage(message);
+                    all_messages[currentSessionId] = all_messages[currentSessionId] || [];
+                    all_messages[currentSessionId].push({
+                        sender: 'AI',
+                        content: message
+                    });
+                }
+
+                // 如果实例没有绑定会话，创建一个新的
+                if (!instance.session_id) {
+                    instance.session_id = `session_${Date.now()}`;
+                    renderInstanceList();
+                }
+
+                console.log('成功切换到实例会话:', instanceId);
+
+            } catch (error) {
+                console.error('进入实例会话失败:', error);
+                addErrorMessage('切换会话失败，请稍后重试');
+            }
+        }
+
+        // 获取模板名称
+        function getTemplateName(templateId) {
+            const template = appState.templates.find(t => t.template_id === templateId);
+            return template ? template.template_name : '未知模板';
+        }
+
+        // 更新活跃会话显示
+        function updateActiveSessionDisplay(instance) {
+            const titleElement = document.getElementById('chartTitle');
+            if (!(titleElement && instance)) return;
+            if (menus.length === 0 && !titleElement.classList.contains('hidden')) titleElement.classList.add('hidden');
+            const templateName = getTemplateName(instance.template_id);
+            const hasmenus = menus.filter(item => item === templateName);
+            if (hasmenus.length > 0) {
+                selectedIndex = menus.indexOf(templateName);
+            } else {
+                menus.push(templateName);
+                selectedIndex = menus.length - 1;
+            }
+            if (menuContainerDiv.classList.contains('hidden')) menuContainerDiv.classList.remove('hidden');
+        }
+
+        // 清空聊天区域
+        function clearChatArea() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '<div class="max-w-5xl mx-auto space-y-6"></div>';
+        }
+
+        // 显示成功消息
+        function showSuccessMessage(message) {
+
+            // 可以在这里添加Toast通知或其它成功提示
+            console.log('成功:', message);
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'absolute inset-x-0 top-10 mb-4 flex mb-4 justify-center z-50';
+            messageDiv.innerHTML = `
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        <strong>成功:</strong> ${message}
+                    </div>
+                `;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            setTimeout(() => {
+                chatArea.removeChild(messageDiv);
+            }, 3000);
+        }
+
+        // 添加错误消息（复用现有函数）
+        function addErrorMessage(message) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'absolute inset-x-0 top-10 mb-4 flex mb-4 justify-center z-50';
+            messageDiv.innerHTML = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <strong>错误:</strong> ${message}
+                </div>
+            `;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            setTimeout(() => {
+                chatArea.removeChild(messageDiv);
+            }, 3000);
+        }
+
+        // 初始化弹窗事件
+        document.addEventListener('DOMContentLoaded', function () {
+            // 点击弹窗外部关闭
+            document.getElementById('templateManagerModal').addEventListener('click', function (e) {
+                if (e.target === this) {
+                    closeTemplateManager();
+                }
+            });
+
+            document.getElementById('instanceMenuModal').addEventListener('click', function (e) {
+                if (e.target === this) {
+                    closeInstanceMenu();
+                }
+            });
+
+            // ESC键关闭弹窗
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    closeTemplateManager();
+                    closeInstanceMenu();
+                }
+            });
+
+            console.log('智能体管理弹窗初始化完成');
+        });
+        const menuContainerDiv = document.getElementById('menuContainerDiv');
+        const menuContainer = document.getElementById('menuContainer');
+        const scrollLeftBtn = document.getElementById('scrollLeft');
+        const scrollRightBtn = document.getElementById('scrollRight');
+        let currentIndex = 0;
+
+        // 渲染菜单项
+        function renderMenus() {
+            menuContainer.innerHTML = '';
+            menus.forEach((name, index) => {
+                const menuItem = document.createElement('div');
+                menuItem.className = `menu-item flex items-center px-2 py-1 from-white rounded-lg shadow-sm border border-[#7c7c7c] whitespace-nowrap hover:shadow-md transition-all duration-300 ${index === selectedIndex ? 'selected' : 'from-white to-gray-50'
+                }`;
+                menuItem.innerHTML = `
+                    <i class="fas fa-times delete-icon text-red-500 cursor-pointer hover:text-red-700 transition-colors mr-2 text-lg ${index === selectedIndex ? 'text-yellow-300' : 'text-red-500'
+                }"></i>
+          <span>${name}</span>
+        `;
+                // 添加点击事件
+                menuItem.addEventListener('click', function (e) {
+                    // 防止点击删除按钮时触发菜单选中
+                    if (!e.target.classList.contains('delete-icon')) {
+                        selectedIndex = index;
+                        const templateName = menus[selectedIndex];
+                        const instance = appState.templates.find(item => item.template_name === templateName);
+                        currentSessionId = appState.instances.find(item => item.template_id === instance.template_id).session_id;
+                        renderMenus();
+                    }
+                });
+                menuContainer.appendChild(menuItem);
+            });
+
+            // 绑定删除事件
+            document.querySelectorAll('.fa-times').forEach((icon, index) => {
+                icon.addEventListener('click', function () {
+                    menus.splice(index, 1);
+                    if (selectedIndex === index) {
+                        selectedIndex = -1;
+                    } else if (selectedIndex > index) {
+                        selectedIndex--;
+                    }
+                    if (menus.length === 0) {
+                        const titleElement = document.getElementById('chartTitle');
+                        titleElement.classList.remove('hidden');
+                        menuContainerDiv.classList.add('hidden');
+                        clearChatArea();
+                        all_messages = {};
+                        currentSessionId = null;
+                    } else {
+                        const templateName = menus[selectedIndex];
+                        const instance = appState.templates.find(item => item.template_name === templateName);
+                        currentSessionId = appState.instances.find(item => item.template_id === instance.template_id).session_id;
+                        renderMenus();
+                    }
+
+                });
+            });
+            // 更新聊天记录
+            if (all_messages[currentSessionId].length > 0) {
+                updateChatHistory();
+            }
+        }
+
+
+        // 滚动功能
+        scrollLeftBtn.addEventListener('click', () => {
+            menuContainer.scrollBy({left: -150, behavior: 'smooth'});
+        });
+
+        scrollRightBtn.addEventListener('click', () => {
+            menuContainer.scrollBy({left: 150, behavior: 'smooth'});
+        });
+
+        // Markdown转HTML函数
+        function markdownToHtml(markdown) {
+            // 处理代码块
+            let inCodeBlock = false;
+            let codeLang = '';
+            const lines = markdown.split('\n');
+            const processedLines = [];
+
+            lines.forEach(line => {
+                if (line.startsWith('```')) {
+                    if (inCodeBlock) {
+                        processedLines.push('</code></pre>');
+                        inCodeBlock = false;
+                    } else {
+                        const langMatch = line.match(/```(\w+)/);
+                        codeLang = langMatch ? langMatch[1] : '';
+                        processedLines.push(`<pre class="language-${codeLang}"><code>`);
+                        inCodeBlock = true;
+                    }
+                } else {
+                    processedLines.push(line);
+                }
+            });
+
+            if (inCodeBlock) {
+                processedLines.push('</code></pre>');
+            }
+
+            let html = processedLines.join('\n');
+
+            // 处理分隔线
+            html = html.replace(/^\s*---\s*$/gm, '<hr>');
+
+            // 处理标题
+            html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>');
+            html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>');
+            html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+            // 处理粗体和斜体
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // 处理链接
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+            // 处理图片
+            html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg shadow-md">');
+
+            // 处理引用块
+            html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+            // 处理无序列表
+            html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/gims, '<ul>$1</ul>');
+
+            // 处理有序列表
+            html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/gims, '<ol>$1</ol>');
+
+            // 处理行内代码
+            html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+
+            // 处理段落
+            html = html.replace(/^\s*([^<\n]+?)\s*$/gim, '<p>$1</p>');
+
+            // 处理表格
+            const tableRegex = /(\|[^\n]+\|\n\|[-|\s]+\|\n(?:\|[^\n]+\|\n?)*)/g;
+            html = html.replace(tableRegex, (match) => {
+                const lines = match.trim().split('\n');
+                if (lines.length < 2) return match;
+
+                const headers = lines[0].split('|').filter(h => h.trim() !== '');
+                const alignments = lines[1].split('|').filter(a => a.trim() !== '');
+                const rows = lines.slice(2).map(row => row.split('|').filter(cell => cell.trim() !== ''));
+
+                let tableHtml = '<table class="table-auto w-full border-collapse border border-gray-300"><thead><tr>';
+                headers.forEach(header => {
+                    tableHtml += `<th class="border border-gray-300 px-4 py-2 bg-gray-100">${header.trim()}</th>`;
+                });
+                tableHtml += '</tr></thead><tbody>';
+
+                rows.forEach(row => {
+                    tableHtml += '<tr>';
+                    row.forEach(cell => {
+                        tableHtml += `<td class="border border-gray-300 px-4 py-2">${cell.trim()}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                });
+
+                tableHtml += '</tbody></table>';
+                return tableHtml;
+            });
+
+            return html;
+        }
+
+
+        // 初始化
+    </script>
 </body>
+
 </html>

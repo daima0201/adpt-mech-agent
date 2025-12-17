@@ -4,6 +4,7 @@
 """
 import json
 import logging
+from typing import Any, List
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +22,12 @@ class CreateAgentRequest(BaseModel):
     agent_config_id: int = 1  # 默认使用量子销售经理配置
 
 
+class SendActiveRequest(BaseModel):
+    """发送消息请求模型"""
+    agent_id: str
+    session_id: Optional[str] = None
+
+
 class SendMessageRequest(BaseModel):
     """发送消息请求模型"""
     message: str
@@ -32,6 +39,47 @@ class APIResponse(BaseModel):
     success: bool
     data: Optional[dict] = None
     error: Optional[str] = None
+
+
+@router.get("/templates/list", response_model=List[Any])
+async def list_agent_templates(
+        agent_service: AgentService = Depends(get_agent_service)
+):
+    """列出所有可用的智能体模板"""
+    templates = await agent_service.list_available_templates()
+    # 将AgentConfig对象转换为可序列化的字典
+    serializable_data = []
+    for template in templates:
+        serializable_data.append(
+            {"template_id": "template_00" + str(template.id),
+             "template_name": template.name,
+             "description": template.description, }
+        )
+    return serializable_data
+
+
+@router.get("/instance/list", response_model=List[Any])
+async def list_agent_instance(
+        agent_service: AgentService = Depends(get_agent_service)
+):
+    """列出所有可用的智能体实例"""
+    agents_data = agent_service.list_available_agents()
+    # 将AgentFullConfig对象转换为可序列化的字典
+    serializable_data = []
+    for agent_id, agent in agents_data.items():
+        serializable_data.append(
+            {
+                "id": agent_id,
+                "name": agent.config.agent_config.name if agent.config else "未知",
+                "type": agent.config.agent_config.agent_type if agent.config else "unknown",
+                "description": f"{agent.config.agent_config.name}智能体" if agent.config else "",
+                "is_active": agent.is_active(),
+                "is_speaking": agent.speaking,
+                "run_time": agent.run_time_state,
+                "cognitive_state": agent.cognitive_state,
+            }
+        )
+    return serializable_data
 
 
 @router.post("/create", response_model=APIResponse)
@@ -48,14 +96,15 @@ async def create_agent(
         await agent_service.agent_manager._load_agent_configs()
         cfgs = agent_service.agent_manager.get_all_config()
         all_cfg = cfgs.get(agent_id)
-        await agent.initialize(all_cfg)
         return APIResponse(
             success=True,
             data={
-                "id": agent_id,
-                "name": "量子销售经理",
-                "type": "simple",
-                "description": "量子销售经理智能体"
+                "id": agent.agent_id,
+                "name": all_cfg.agent_config.name,
+                "type": all_cfg.agent_config.agent_type,
+                "description": all_cfg.agent_config.description,
+                "is_active": agent.is_active(),
+                "is_speaking": agent.speaking
             }
         )
 
@@ -153,16 +202,10 @@ async def get_agent_info(
             raise HTTPException(status_code=404, detail="智能体不存在")
 
         config = agent_service.get_agent_config(agent_id)
-
+        health_info = agent.health_check()
         return APIResponse(
             success=True,
-            data={
-                "id": agent_id,
-                "name": config.name if config else "未知",
-                "type": config.agent_type if config else "unknown",
-                "description": config.description if config else "",
-                "status": "active"
-            }
+            data=health_info
         )
 
     except Exception as e:
@@ -194,3 +237,44 @@ async def list_agents(
             success=False,
             error=str(e)
         )
+
+
+@router.post("/activate", response_model=APIResponse)
+async def switch_activate(
+        request: SendActiveRequest,
+        agent_service: AgentService = Depends(get_agent_service)
+):
+    """切换活跃智能体请求"""
+    try:
+        agent_ids = agent_service.list_agents()
+        if request.agent_id not in agent_ids:
+            raise HTTPException(status_code=404, detail="智能体不存在")
+        await agent_service.switch_active_agent(request.agent_id)
+        return APIResponse(
+            success=True,
+            data={
+                "agents": agent_ids,
+                "current_activate": agent_service.agent_manager.active_agent_id
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"切换活跃智能体请求失败: {e}")
+        return APIResponse(
+            success=False,
+            error=str(e)
+        )
+
+
+@router.post("/{agent_id}/close", response_model=APIResponse)
+async def close_agent(
+        agent_id: str,
+        agent_service: AgentService = Depends(get_agent_service)
+):
+    """关闭指定智能体"""
+    try:
+        await agent_service.agent_manager.close_agent(agent_id)
+        return APIResponse(success=True)
+    except Exception as e:
+        logger.error(f"关闭智能体失败: {e}")
+        return APIResponse(success=False, error=str(e))

@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Iterator
 
 from src.agents.DTO.agent_full_config import AgentFullConfig
-from src.agents.core.base_agent import BaseAgent, AgentConfig
+from src.agents.core.base_agent import BaseAgent
 from src.agents.core.base_llm import BaseLLM
 from src.agents.core.base_message import Message, MessageBuilder
 

@@ -7,9 +7,10 @@ import asyncio
 import logging
 from typing import Dict, Optional, List
 
-from src.agents import BaseAgent, BaseLLM, AgentFactory
+from src.agents import BaseAgent, AgentFactory, BaseLLM
 from src.agents.DTO.agent_full_config import AgentFullConfig
 from src.agents.impls.llm.llm_factory import LLMFactory
+from src.agents.repositories import agent_repository
 from src.managers.cache_manager import get_cache_manager
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class AgentManager:
 
                             # 2.2 创建Agent实例
                             agent = await self._create_agent(agent_id, agent_full_config, llm)
+                            await agent.initialize()
 
                             # 2.3 注册Agent
                             await self.register(agent_id, agent, agent_full_config)
@@ -59,9 +61,9 @@ class AgentManager:
     async def register(self, agent_id: str, agent: BaseAgent, agent_full_config: AgentFullConfig) -> bool:
         """注册Agent实例"""
         async with self._register_lock:
-            if agent_id in self.agent_configs:
-                logger.warning(f"Agent {agent_id} already registered")
-                return False
+            # if agent_id in self.agent_configs:
+            #     logger.warning(f"Agent {agent_id} already registered")
+            #     return False
 
             self.agent_configs[agent_id] = agent_full_config
             self.agents[agent_id] = agent
@@ -71,6 +73,7 @@ class AgentManager:
             # 如果没有活跃Agent，设置为活跃
             if self.active_agent_id is None:
                 self.active_agent_id = agent_id
+                await self.switch_active(agent_id)
 
             logger.info(f"Agent registered: {agent_id}")
             return True
@@ -84,6 +87,7 @@ class AgentManager:
 
                 # 2.2 创建Agent实例
                 agent = await self._create_agent(agent_id, agent_full_config, llm)
+                await agent.initialize()
 
                 # 2.3 注册Agent
                 await self.register(agent_id, agent, agent_full_config)
@@ -108,6 +112,7 @@ class AgentManager:
                     (id_ for id_ in self.agent_configs.keys() if id_ != agent_id),
                     None
                 )
+                await self.switch_active(agent_id)
             # 关闭Agent
             await self.close_agent(agent_id)
 
@@ -116,15 +121,16 @@ class AgentManager:
 
     async def switch_active(self, agent_id: str) -> bool:
         """切换活跃Agent"""
-        async with self._lock:
-            if agent_id not in self.agent_configs:
-                logger.error(f"Agent {agent_id} not found")
-                return False
+        if agent_id not in self.agent_configs:
+            logger.error(f"Agent {agent_id} not found")
+            return False
 
-            old_id = self.active_agent_id
-            self.active_agent_id = agent_id
-            logger.info(f"Active agent switched: {old_id} -> {agent_id}")
-            return True
+        old_id = self.active_agent_id
+        self.agents[old_id].switch_active(False)
+        self.active_agent_id = agent_id
+        self.agents[self.active_agent_id].switch_active(True)
+        logger.info(f"Active agent switched: {old_id} -> {agent_id}")
+        return True
 
     def get_agent(self, agent_id: str) -> BaseAgent:
         """获取Agent实例"""
@@ -212,3 +218,14 @@ class AgentManager:
     async def _create_agent(self, agent_id: str, agent_full_config: AgentFullConfig, llm: BaseLLM) -> BaseAgent:
         """根据配置创建 LLM 实例"""
         return await self.agent_factory.create_agent(agent_id, agent_full_config, llm)
+
+    async def list_agent_templates(self):
+        """列出所有可用的智能体模板"""
+        try:
+            async with agent_repository() as repo:
+                # 1. 获取DTO
+                full_config = await repo.list_agent_configs()
+        except Exception as e:
+            logger.error(f"Failed to list agent templates: {e}")
+            return []
+        return full_config

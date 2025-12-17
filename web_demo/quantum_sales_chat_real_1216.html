@@ -706,21 +706,15 @@
                 try {
                     console.log('正在初始化agent服务...');
 
-                    // 检查后端是否可用 - 通过agents接口测试
+                    // 检查后端是否可用
                     try {
-                        const response = await fetch('/api/agents/instance/list');
-                        if (!response.ok) {
-                            throw new Error(`后端服务不可用，状态码: ${response.status}`);
+                        const healthResponse = await fetch('/api/health');
+                        if (!healthResponse.ok) {
+                            throw new Error('后端服务不可用');
                         }
-                        console.log('后端服务连接正常');
                     } catch (error) {
-                        console.warn('后端连接测试失败:', error);
-                        addErrorMessage('无法连接到智能体服务，请确保后端服务正在运行');
-                        return;
+                        console.warn('健康检查失败，尝试直接连接agents接口:', error);
                     }
-
-                    // 加载实例数据
-                    await loadInstances();
 
                     // 确保有可用的agent
                     await ensureActiveAgent();
@@ -728,7 +722,7 @@
                     console.log('agent服务初始化完成');
                 } catch (error) {
                     console.error('初始化agent服务失败:', error);
-                    addErrorMessage('初始化智能体服务失败，请检查后端连接');
+                    // addErrorMessage('无法连接到智能体服务，请检查后端是否正常运行');
                 }
             }
 
@@ -746,12 +740,10 @@
 
                         // 从创建结果中提取agent_id
                         let agentId = null;
-                        if (newAgentResult && newAgentResult.id) {
-                            agentId = newAgentResult.id;
-                        } else if (newAgentResult && newAgentResult.data && newAgentResult.data.id) {
-                            agentId = newAgentResult.data.id;
-                        } else if (typeof newAgentResult === 'string') {
-                            agentId = newAgentResult;
+                        if (newAgentResult && newAgentResult.agent_id) {
+                            agentId = newAgentResult.agent_id;
+                        } else if (newAgentResult && newAgentResult.data && newAgentResult.data.agent_id) {
+                            agentId = newAgentResult.data.agent_id;
                         } else {
                             // 如果API返回格式不同，使用默认命名
                             agentId = 'agent_simple_quantum_sales_manager_' + Date.now();
@@ -759,9 +751,6 @@
 
                         localStorage.setItem('activeAgentId', agentId);
                         console.log('设置新创建的agent为活跃agent:', agentId);
-                        
-                        // 重新加载实例数据以更新UI
-                        await loadInstances();
                     } else {
                         console.log('找到现有agent:', agents);
                         // 设置第一个agent为活跃agent
@@ -783,7 +772,7 @@
             async function listAgents() {
                 try {
                     console.log('正在获取agent列表...');
-                    const response = await fetch('/api/agents/instance/list');
+                    const response = await fetch('/api/agents/list');
                     console.log('agent列表响应状态:', response.status);
 
                     if (!response.ok) {
@@ -796,20 +785,27 @@
                     console.log('agent列表响应数据:', result);
 
                     // 根据实际API响应结构调整
-                    let agents = [];
-                    if (Array.isArray(result)) {
-                        agents = result;
+                    if (result.success && result.data && result.data.agents) {
+                        // 返回agent ID列表
+                        return result.data.agents;
+                    } else if (result.agents) {
+                        // 直接返回agent ID列表
+                        return result.agents;
                     } else if (result.data && Array.isArray(result.data)) {
-                        agents = result.data;
-                    } else if (result.success && result.data && Array.isArray(result.data)) {
-                        agents = result.data;
+                        // 如果data是数组，直接返回
+                        return result.data;
+                    } else if (result.success && result.data) {
+                        // 如果data不是数组但存在，尝试提取agent_id
+                        const agents = [];
+                        for (const key in result.data) {
+                            if (result.data[key] && typeof result.data[key] === 'string') {
+                                agents.push(result.data[key]);
+                            }
+                        }
+                        return agents.length > 0 ? agents : [];
                     }
 
-                    if (agents.length > 0) {
-                        return agents.map(agent => agent.id);
-                    }
-
-                    console.warn('未找到有效的agent列表数据:', result);
+                    console.warn('未找到有效的agent列表数据');
                     return [];
                 } catch (error) {
                     console.error('获取agent列表失败:', error);
@@ -829,28 +825,15 @@
                     });
 
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`创建agent失败! 状态: ${response.status}, 内容: ${errorText}`);
+                        throw new Error(`创建agent失败! 状态: ${response.status}`);
                     }
 
                     const result = await response.json();
-                    console.log('创建agent响应:', result);
-                    
-                    // 根据实际API响应格式处理
-                    if (result.id) {
-                        // 如果直接返回agent对象
-                        return result;
-                    } else if (result.data && result.data.id) {
-                        // 如果返回包含data字段
+                    if (result.success) {
+                        console.log('创建agent成功:', result.data);
                         return result.data;
-                    } else if (result.success && result.data) {
-                        // 如果返回success字段
-                        return result.data;
-                    } else if (typeof result === 'string') {
-                        // 如果直接返回字符串ID
-                        return { id: result };
                     } else {
-                        throw new Error('创建agent失败: API返回格式不符合预期');
+                        throw new Error('创建agent失败: ' + JSON.stringify(result));
                     }
                 } catch (error) {
                     console.error('创建agent失败:', error);
@@ -859,38 +842,8 @@
             }
 
             // 获取活跃的agent_id
-            async function getActiveAgentId() {
-                // 首先检查本地存储
-                let agentId = localStorage.getItem('activeAgentId');
-                
-                if (!agentId) {
-                    try {
-                        // 调用API获取活跃agent信息
-                        const response = await fetch('/api/agents/instance/list');
-                        if (response.ok) {
-                            const result = await response.json();
-                            
-                            // 根据实际API响应格式处理
-                            let agents = [];
-                            if (Array.isArray(result)) {
-                                agents = result;
-                            } else if (result.data && Array.isArray(result.data)) {
-                                agents = result.data;
-                            } else if (result.success && result.data && Array.isArray(result.data)) {
-                                agents = result.data;
-                            }
-                            
-                            if (agents.length > 0) {
-                                // 使用第一个agent作为默认活跃agent
-                                agentId = agents[0].id || agents[0].agent_id || agents[0].instance_id;
-                                localStorage.setItem('activeAgentId', agentId);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('获取活跃agent失败:', error);
-                    }
-                }
-                
+            function getActiveAgentId() {
+                const agentId = localStorage.getItem('activeAgentId');
                 console.log('当前活跃agent_id:', agentId);
                 return agentId;
             }
@@ -1215,70 +1168,41 @@
 
                             if (line.startsWith('data: ')) {
                                 const dataStr = line.slice(6); // 移除 'data: '
-                                
-                                // 跳过空的事件
-                                if (dataStr.trim() === '') continue;
-                                
+                                // 简化流式响应处理逻辑
                                 try {
                                     const responseData = JSON.parse(dataStr);
                                     console.log('流式响应数据:', responseData);
 
-                                    // 根据API响应格式处理不同类型的事件
-                                    if (responseData.type === 'stream_start') {
-                                        console.log('流开始，会话ID:', responseData.session_id);
-                                        // 创建AI消息元素
-                                        aiMessageElement = createAIMessageElement();
-                                        aiMessageContent = '';
+                                    // 处理不同的响应格式
+                                    let content = '';
+                                    if (responseData.content) {
+                                        content = responseData.content;
+                                    } else if (responseData.message) {
+                                        content = responseData.message;
+                                    } else if (responseData.text) {
+                                        content = responseData.text;
+                                    } else if (responseData.chunk) {
+                                        content = responseData.chunk;
+                                    } else if (typeof responseData === 'string') {
+                                        content = responseData;
                                     }
-                                    else if (responseData.type === 'chunk') {
-                                        // 处理内容块
-                                        const content = responseData.content || responseData.data || responseData.message || '';
-                                        if (content) {
-                                            // 如果是第一次收到内容，确保有消息元素
-                                            if (!aiMessageElement) {
-                                                aiMessageElement = createAIMessageElement();
-                                            }
 
-                                            // 追加内容到AI消息
-                                            aiMessageContent += content;
-                                            aiMessageElement.innerHTML = aiMessageContent.replace(/\n/g, '<br>');
-                                            scrollToBottom();
-                                        }
-                                    }
-                                    else if (responseData.type === 'stream_end') {
-                                        console.log('流式响应结束，会话ID:', responseData.session_id);
-                                        break;
-                                    }
-                                    else if (responseData.type === 'error') {
-                                        console.error('流式响应错误:', responseData.message);
-                                        addErrorMessage('智能体响应出错: ' + responseData.message);
-                                        break;
-                                    }
-                                    else {
-                                        // 兼容其他可能的响应格式
-                                        let content = '';
-                                        if (responseData.content) {
-                                            content = responseData.content;
-                                        } else if (responseData.message) {
-                                            content = responseData.message;
-                                        } else if (responseData.text) {
-                                            content = responseData.text;
-                                        } else if (responseData.chunk) {
-                                            content = responseData.chunk;
-                                        } else if (responseData.data) {
-                                            content = responseData.data;
-                                        } else if (typeof responseData === 'string') {
-                                            content = responseData;
+                                    if (content) {
+                                        // 如果是第一次收到内容，创建AI消息元素
+                                        if (!aiMessageElement) {
+                                            aiMessageElement = createAIMessageElement();
                                         }
 
-                                        if (content) {
-                                            if (!aiMessageElement) {
-                                                aiMessageElement = createAIMessageElement();
-                                            }
-                                            aiMessageContent += content;
-                                            aiMessageElement.innerHTML = aiMessageContent.replace(/\n/g, '<br>');
-                                            scrollToBottom();
-                                        }
+                                        // 追加内容到AI消息
+                                        aiMessageContent += content;
+                                        aiMessageElement.innerHTML = aiMessageContent.replace(/\n/g, '<br>');
+                                        scrollToBottom();
+                                    }
+
+                                    // 检查是否是结束标记
+                                    if (responseData.type === 'stream_end' || responseData.is_final) {
+                                        console.log('流式响应结束');
+                                        break;
                                     }
                                 } catch (parseError) {
                                     console.error('解析流数据失败:', parseError, '原始数据:', dataStr);
@@ -1291,16 +1215,6 @@
                 } finally {
                     // 标记接收响应完成
                     isReceivingResponse = false;
-                    
-                    // 保存完整的AI消息到历史记录
-                    if (aiMessageContent && currentSessionId) {
-                        all_messages[currentSessionId] = all_messages[currentSessionId] || [];
-                        all_messages[currentSessionId].push({
-                            sender: 'AI',
-                            content: aiMessageContent
-                        });
-                    }
-                    
                     console.log('流式响应处理完成');
                 }
             }
@@ -1368,14 +1282,9 @@
                     const url = `/api/agents/${agentId}/stream`;
                     console.log('请求URL:', url);
 
-                    // 生成或使用当前会话ID
-                    if (!currentSessionId) {
-                        currentSessionId = `session_${Date.now()}_${agentId}`;
-                    }
-
                     const requestBody = {
                         message: message,
-                        session_id: currentSessionId
+                        session_id: currentSessionId || 'default_session'
                     };
 
                     console.log('请求体:', JSON.stringify(requestBody));
@@ -1397,55 +1306,11 @@
                         throw new Error(`HTTP错误! 状态: ${response.status}, 内容: ${errorText}`);
                     }
 
-                    // 检查响应类型是否为text/event-stream
-                    const contentType = response.headers.get('content-type');
-                    console.log('响应Content-Type:', contentType);
-
-                    if (contentType && contentType.includes('text/event-stream')) {
-                        // 处理流式响应
-                        await handleStreamResponse(response);
-                    } else {
-                        // 处理普通JSON响应
-                        const result = await response.json();
-                        console.log('非流式响应结果:', result);
-                        
-                        // 根据实际API响应格式处理
-                        let responseContent = '';
-                        if (result.response) {
-                            responseContent = result.response;
-                        } else if (result.data && result.data.response) {
-                            responseContent = result.data.response;
-                        } else if (result.content) {
-                            responseContent = result.content;
-                        } else if (result.message) {
-                            responseContent = result.message;
-                        } else if (typeof result === 'string') {
-                            responseContent = result;
-                        } else if (result.success && result.data) {
-                            responseContent = result.data.response || result.data.content || result.data.message || '';
-                        }
-                        
-                        if (responseContent) {
-                            // 显示AI回复
-                            const aiMessageElement = createAIMessageElement();
-                            aiMessageElement.innerHTML = responseContent.replace(/\n/g, '<br>');
-                            scrollToBottom();
-                            
-                            // 保存到历史记录
-                            if (currentSessionId) {
-                                all_messages[currentSessionId] = all_messages[currentSessionId] || [];
-                                all_messages[currentSessionId].push({
-                                    sender: 'AI',
-                                    content: responseContent
-                                });
-                            }
-                        } else {
-                            throw new Error(result.error || '未知错误');
-                        }
-                    }
+                    // 处理流式响应
+                    await handleStreamResponse(response);
 
                 } catch (error) {
-                    console.error('API调用失败:', error);
+                    console.error('流式API调用失败:', error);
                     addErrorMessage('抱歉，暂时无法处理您的请求。请稍后再试。');
                 }
             }
@@ -1558,36 +1423,8 @@
                 try {
                     console.log('开始加载模板数据...');
 
-                    // 调用真实API获取模板列表
-                    const response = await fetch('/api/agents/templates/list');
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`HTTP error! status: ${response.status}, content: ${errorText}`);
-                    }
-                    
-                    const result = await response.json();
-                    console.log('API返回的模板数据:', result);
-                    
-                    // 根据实际API响应格式处理
-                    let templates = [];
-                    if (Array.isArray(result)) {
-                        templates = result;
-                    } else if (result.data && Array.isArray(result.data)) {
-                        templates = result.data;
-                    } else if (result.success && result.data && Array.isArray(result.data)) {
-                        templates = result.data;
-                    }
-                    
-                    // 确保模板数据格式正确
-                    if (templates.length > 0) {
-                        appState.templates = templates.map(template => ({
-                            template_id: template.template_id || `template_00${template.id || 1}`,
-                            template_name: template.template_name || template.name || '未知模板',
-                            description: template.description || '暂无描述'
-                        }));
-                    } else {
-                        appState.templates = [];
-                    }
+                    // 先使用mock数据，后续替换为真实API调用
+                    appState.templates = mockTemplates;
 
                     // 渲染模板列表
                     renderTemplateList();
@@ -1596,9 +1433,6 @@
                 } catch (error) {
                     console.error('加载模板数据失败:', error);
                     addErrorMessage('加载模板数据失败，请稍后重试');
-                    // 降级到mock数据
-                    appState.templates = mockTemplates;
-                    renderTemplateList();
                 }
             }
 
@@ -1607,44 +1441,8 @@
                 try {
                     console.log('开始加载实例数据...');
 
-                    // 调用真实API获取实例列表
-                    const response = await fetch('/api/agents/instance/list');
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`HTTP error! status: ${response.status}, content: ${errorText}`);
-                    }
-                    
-                    const result = await response.json();
-                    console.log('API返回的实例数据:', result);
-                    
-                    // 根据实际API响应格式处理
-                    let agents = [];
-                    if (Array.isArray(result)) {
-                        agents = result;
-                    } else if (result.data && Array.isArray(result.data)) {
-                        agents = result.data;
-                    } else if (result.success && result.data && Array.isArray(result.data)) {
-                        agents = result.data;
-                    }
-                    
-                    if (agents.length > 0) {
-                        appState.instances = agents.map(agent => ({
-                            instance_id: agent.id,
-                            template_id: `template_00${agent.type === 'quantum_sales_manager' ? 1 : 2}`,
-                            name: agent.name || agent.id,
-                            description: agent.description || '智能体实例',
-                            status: agent.is_active ? 'ACTIVE' : 'IDLE',
-                            is_speaking: agent.is_speaking || false,
-                            run_time: agent.run_time || '',
-                            cognitive_state: agent.cognitive_state || '',
-                            session_id: `session_${Date.now()}_${agent.id}`, // 为每个实例创建唯一的会话ID
-                            created_at: new Date().toISOString(),
-                            last_active: new Date().toISOString()
-                        }));
-                    } else {
-                        console.warn('API返回格式不符合预期或为空:', result);
-                        appState.instances = [];
-                    }
+                    // 先使用mock数据，后续替换为真实API调用
+                    appState.instances = mockInstances;
 
                     // 渲染实例列表
                     renderInstanceList();
@@ -1653,9 +1451,6 @@
                 } catch (error) {
                     console.error('加载实例数据失败:', error);
                     addErrorMessage('加载实例数据失败，请稍后重试');
-                    // 降级到mock数据
-                    appState.instances = mockInstances;
-                    renderInstanceList();
                 }
             }
 
@@ -1759,44 +1554,22 @@
                     button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>创建中...';
                     button.disabled = true;
 
-                    // 调用真实API创建实例
-                    const response = await fetch('/api/agents/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ agent_config_id: parseInt(templateId.replace('template_00', '')) || 1 })
-                    });
+                    // TODO: 调用真实API创建实例
+                    // const response = await fetch('/api/create_agent_instance', {
+                    //     method: 'POST',
+                    //     headers: { 'Content-Type': 'application/json' },
+                    //     body: JSON.stringify({ template_id: templateId })
+                    // });
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`HTTP error! status: ${response.status}, content: ${errorText}`);
-                    }
+                    // 模拟API调用延迟
+                    await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    const result = await response.json();
-                    console.log('创建实例API响应:', result);
-
-                    // 根据实际API响应格式处理
-                    let agentData = null;
-                    if (result.id) {
-                        agentData = result;
-                    } else if (result.data && result.data.id) {
-                        agentData = result.data;
-                    } else if (result.success && result.data) {
-                        agentData = result.data;
-                    } else if (typeof result === 'string') {
-                        agentData = { id: result, name: '新智能体', description: '新创建的智能体实例' };
-                    } else {
-                        throw new Error('创建实例失败: API返回格式不符合预期');
-                    }
-
-                    // 根据API响应创建实例
+                    // 创建mock实例
                     const newInstance = {
-                        instance_id: agentData.id,
+                        instance_id: `instance_${Date.now()}`,
                         template_id: templateId,
-                        name: agentData.name || '新智能体',
-                        description: agentData.description || '新创建的智能体实例',
-                        status: agentData.is_active ? 'ACTIVE' : 'IDLE',
-                        is_speaking: agentData.is_speaking || false,
-                        session_id: `session_${Date.now()}_${agentData.id}`,
+                        status: 'ACTIVE',
+                        session_id: `session_${Date.now()}`,
                         created_at: new Date().toISOString(),
                         last_active: new Date().toISOString()
                     };
@@ -1806,9 +1579,6 @@
 
                     // 刷新实例列表
                     renderInstanceList();
-
-                    // 重新加载实例数据以确保获取最新状态
-                    await loadInstances();
 
                     // 提示成功
                     showSuccessMessage('实例创建成功！');
@@ -2002,36 +1772,7 @@
 
                 // 绑定删除事件
                 document.querySelectorAll('.fa-times').forEach((icon, index) => {
-                    icon.addEventListener('click', async function () {
-                        const templateName = menus[index];
-                        const instance = appState.templates.find(item => item.template_name === templateName);
-                        
-                        if (instance) {
-                            try {
-                                // 调用API删除实例
-                                const response = await fetch(`/api/agents/${instance.instance_id || instance.id}/close`, {
-                                    method: 'POST'
-                                });
-                                
-                                if (!response.ok) {
-                                    throw new Error(`删除失败: ${response.status}`);
-                                }
-                                
-                                const result = await response.json();
-                                if (!result.success) {
-                                    throw new Error(result.error || '删除失败');
-                                }
-                                
-                                console.log('成功删除实例:', instance.instance_id || instance.id);
-                                
-                            } catch (error) {
-                                console.error('删除实例失败:', error);
-                                alert('删除实例失败: ' + error.message);
-                                return; // 如果删除失败，不继续执行后续操作
-                            }
-                        }
-                        
-                        // 从前端移除实例
+                    icon.addEventListener('click', function () {
                         menus.splice(index, 1);
                         if (selectedIndex === index) {
                             selectedIndex = -1;

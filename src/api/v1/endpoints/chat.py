@@ -21,7 +21,6 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     agent_id: str = "quantum_sales_manager"
-    stream: bool = False
 
 
 class APIResponse(BaseModel):
@@ -31,7 +30,7 @@ class APIResponse(BaseModel):
     error: Optional[str] = None
 
 
-@router.post("/", response_model=APIResponse)
+@router.post("/message", response_model=APIResponse)
 async def send_message(
     request: ChatRequest,
     agent_service: AgentService = Depends(get_agent_service)

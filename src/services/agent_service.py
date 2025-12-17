@@ -8,8 +8,9 @@ from typing import Dict, Optional, List, Any, AsyncGenerator
 
 from pydantic import BaseModel
 
-from src.agents import AgentConfig, BaseAgent
+from src.agents import BaseAgent
 from src.agents.DTO.agent_full_config import AgentFullConfig
+from src.agents.models.agent_config import AgentConfig
 from src.agents.repositories import AgentRepository, agent_repository
 from src.managers.agent_manager import AgentManager
 from src.managers.cache_manager import get_cache_manager
@@ -73,23 +74,22 @@ class AgentService:
                 errors = ", ".join(full_config.validation_errors)
                 raise ValueError(f"配置无效: {errors}")
 
-            # 3. 将模板数据存入extra_params（用于Agent初始化）
-            if full_config.prompt_templates:
-                if full_config.agent_config.extra_params is None:
-                    full_config.agent_config.extra_params = {}
-
-                # 转换模板为字典
-                template_dicts = {
-                    key: template.to_dict() if hasattr(template, 'to_dict') else str(template)
-                    for key, template in full_config.prompt_templates.items()
-                }
-                full_config.agent_config.extra_params["prompt_templates"] = template_dicts
+            # # 3. 将模板数据存入extra_params（用于Agent初始化）
+            # if full_config.prompt_templates:
+            #     if full_config.agent_config.extra_params is None:
+            #         full_config.agent_config.extra_params = {}
+            #     # 转换模板为字典
+            #     template_dicts = {
+            #         key: template.to_dict() if hasattr(template, 'to_dict') else str(template)
+            #         for key, template in full_config.prompt_templates.items()
+            #     }
+            #     full_config.agent_config.extra_params["prompt_templates"] = template_dicts
 
             # 4. 创建Agent实例
             instance_id = f"agent_{full_config.agent_config.agent_type}_{full_config.agent_config.name}_{int(datetime.now().timestamp())}"
             success = await self.agent_manager.create_and_register(instance_id, full_config)
-
-            if not success:
+            # await self.agent_manager.agents[instance_id].initialize()
+            if not success & self.agent_manager.agents[instance_id].is_initialized:
                 raise RuntimeError("创建Agent失败")
 
             return instance_id
@@ -98,12 +98,12 @@ class AgentService:
             logger.error(f"从数据库创建Agent失败 {agent_config_id}: {e}")
             raise
 
-    async def create_agent(self, agent_config: AgentConfig, auto_activate: bool = False) -> str:
+    async def create_agent(self, agent_full_config: AgentFullConfig, auto_activate: bool = False) -> str:
         """
         创建新的Agent
 
         Args:
-            agent_config: Agent配置
+            agent_full_config: Agent配置
             auto_activate: 是否自动设置为活跃Agent
 
         Returns:
@@ -113,16 +113,16 @@ class AgentService:
             await self.initialize()
 
         # 检查配置是否有效
-        if not agent_config.id:
+        if not agent_full_config.agent_config.id:
             raise ValueError("Agent配置缺少模板ID（agent_config.id）")
         # 生成唯一ID（如果配置中没有）
-        agent_id = self._gen_agent_id(agent_config)
+        agent_id = self._gen_agent_id(agent_full_config.agent_config)
         # 检查是否已存在
         if agent_id in self.agent_manager.list_agents():
             raise ValueError(f"Agent {agent_id} already exists")
         try:
             # 创建并注册Agent
-            success = await self.agent_manager.create_and_register(agent_id, agent_config)
+            success = await self.agent_manager.create_and_register(agent_id, agent_full_config)
             if not success:
                 raise RuntimeError(f"Failed to create agent {agent_id}")
 
@@ -348,7 +348,7 @@ class AgentService:
             # 检查智能体是否支持流式输出
             if hasattr(agent, 'process_stream'):
                 # 使用智能体的流式接口 - 不需要await，直接使用异步生成器
-                async for chunk in  agent.process_stream(message, session_id=session_id):
+                async for chunk in agent.process_stream(message, session_id=session_id):
                     yield chunk
             elif hasattr(agent, 'process'):
                 # 备用方案：模拟流式输出
@@ -381,6 +381,14 @@ class AgentService:
         # TODO: 实现对话历史存储和检索
         # 目前返回空列表，后续可以集成数据库存储
         return []
+
+    async def list_available_templates(self):
+        """列出所有可用的智能体模板"""
+        return await self.agent_manager.list_agent_templates()
+
+    def list_available_agents(self):
+        """列出所有可用的智能体实例"""
+        return self.agent_manager.agents
 
 
 # 全局AgentService实例

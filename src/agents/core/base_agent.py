@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, List, Dict
 
 from src.agents.enum.run_time_state import RuntimeState
 
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 class AgentMetrics:
     """Agent 级统一指标（协议级，不掺业务）"""
-
     __slots__ = ("total_calls", "total_errors", "total_latency")
 
     def __init__(self):
@@ -24,104 +23,109 @@ class BaseAgent(ABC):
     """
     BaseAgent = Agent 的宪法层
 
-    负责：
-    - 生命周期
-    - 状态机
+    功能：
+    - 生命周期管理
+    - 状态机管理
     - 并发安全
     - 统一执行入口
     - 指标采集
-
-    不负责：
-    - prompt
-    - LLM
-    - tool
-    - domain logic
+    - active 属性 & 切换
     """
 
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str, max_history: int = 10):
         self.agent_id = agent_id
-
         self.run_time_state: RuntimeState = RuntimeState.IDLE
-        self._lock = asyncio.Lock()
         self._closed = False
-
         self.metrics = AgentMetrics()
+        self.is_initialized = False
+        self.conversation_history: List[Dict[str, str]] = []  # 格式: [{"role": "user/assistant", "content": "..."}]
+        self.max_history = max(max_history, 1)  # 至少保留1条历史
+
+        # ========= 新增 active和speaking 支持 =========
+        self.active: bool = False  # 当前实例是否 active（可发言/处理任务）
+        self.speaking: bool = False  # 当前会话是否正在发言
+
+        # ========= 并发控制锁 =========
+        # initialization_lock: 只保护 initialize
+        # _lock: 保护 process 全流程
+        self._initialization_lock = asyncio.Lock()
+        self._lock = asyncio.Lock()
+
+    async def initialize(self) -> bool:
+        """初始化入口（全局只执行一次）"""
+        async with self._initialization_lock:
+            if self.is_initialized:
+                logger.warning(f"Agent {self.agent_id} 已经初始化过")
+                return True
+            await self.customized_initialize()
+            self.is_initialized = True
+            return True
+
+    # ========= Active 管理 =========
+
+    def switch_active(self, value: bool):
+        """切换 active 状态"""
+        old = self.active
+        self.active = value
+        logger.info(f"{self.agent_id} active: {old} -> {self.active}")
+
+    def is_active(self) -> bool:
+        """检查当前实例是否 active"""
+        return self.active
 
     # ========= 对外统一入口（不可 override） =========
 
     async def process(self, input_data: Any, **kwargs) -> Any:
-        """
-        非流式处理入口
-        """
-        return await self._run(input_data, stream=False, **kwargs)
+        async with self._lock:
+            return await self._run(input_data, stream=False, **kwargs)
 
-    async def process_stream(
-            self, input_data: Any, **kwargs
-    ) -> AsyncGenerator[Any, None]:
-        """
-        流式处理入口
-        """
-        result = await self._run(input_data, stream=True, **kwargs)
-        async for chunk in result:
-            yield chunk
+    async def process_stream(self, input_data: Any, **kwargs) -> AsyncGenerator[Any, None]:
+        async with self._lock:
+            result = await self._run(input_data, stream=True, **kwargs)
+            if not hasattr(result, "__aiter__"):
+                raise TypeError("process_stream 必须返回 AsyncGenerator")
+            async for chunk in result:
+                yield chunk
 
-    # ========= 核心调度逻辑（框架铁律） =========
+    # ========= 核心调度逻辑 =========
 
-    async def _run(
-            self,
-            input_data: Any,
-            *,
-            stream: bool,
-            **kwargs,
-    ):
+    async def _run(self, input_data: Any, *, stream: bool, **kwargs):
         if self._closed:
             raise RuntimeError(f"Agent {self.agent_id} is closed")
+        # 🔹 新增：发言权检查
+        if not self.active:
+            raise RuntimeError(f"Agent {self.agent_id} 当前没有发言权")
 
-        async with self._lock:
-            self._enter_running()
-            start_time = time.monotonic()
+        await self.initialize()
+        self._enter_running()
+        start_time = time.monotonic()
 
-            try:
-                self.metrics.total_calls += 1
+        try:
+            self.metrics.total_calls += 1
+            result = await self._process(input_data, stream=stream, **kwargs)
+            return result
 
-                result = await self._process(
-                    input_data,
-                    stream=stream,
-                    **kwargs,
-                )
-                return result
+        except Exception as e:
+            self.metrics.total_errors += 1
+            self.run_time_state = RuntimeState.ERROR
+            logger.exception(f"Agent {self.agent_id} processing failed")
+            raise
 
-            except Exception as e:
-                self.metrics.total_errors += 1
-                self.run_time_state = RuntimeState.ERROR
-                logger.exception(
-                    "Agent %s processing failed", self.agent_id
-                )
-                raise
+        finally:
+            elapsed = time.monotonic() - start_time
+            self.metrics.total_latency += elapsed
+            if self.run_time_state != RuntimeState.CLOSED:
+                self.run_time_state = RuntimeState.IDLE
 
-            finally:
-                elapsed = time.monotonic() - start_time
-                self.metrics.total_latency += elapsed
-                if self.run_time_state != RuntimeState.CLOSED:
-                    self.run_time_state = RuntimeState.IDLE
-
-    # ========= 子类唯一需要实现的方法 =========
+    # ========= 子类需要实现的方法 =========
 
     @abstractmethod
-    async def _process(
-            self,
-            input_data: Any,
-            *,
-            stream: bool,
-            **kwargs,
-    ):
-        """
-        子类唯一实现点：
-
-        - stream=False：返回最终结果
-        - stream=True ：返回 AsyncGenerator
-        """
+    async def _process(self, input_data: Any, *, stream: bool, **kwargs):
         raise NotImplementedError
+
+    @abstractmethod
+    def customized_initialize(self):
+        pass
 
     # ========= 生命周期 =========
 
@@ -133,9 +137,6 @@ class BaseAgent(ABC):
         await self._on_close()
 
     async def _on_close(self):
-        """
-        子类可选 override，用于资源释放
-        """
         pass
 
     # ========= 状态辅助 =========
@@ -148,12 +149,21 @@ class BaseAgent(ABC):
     # ========= 健康检查 =========
 
     def health_check(self) -> dict:
+        return self._status()
+
+    def _status(self) -> dict:
+        """返回 Agent 当前状态（实例级 + 会话级 + 指标）"""
         return {
             "agent_id": self.agent_id,
-            "state": self.run_time_state.value,
+            "active": self.active,  # 实例级 active
+            "speaking": getattr(self, "_speaking", False),  # 会话级 active
+            "cognitive_state": getattr(self, "cognitive_state", None).value
+            if hasattr(self, "cognitive_state") and self.cognitive_state else None,
+            "run_time_state": self.run_time_state.value,
             "total_calls": self.metrics.total_calls,
             "total_errors": self.metrics.total_errors,
             "total_latency": round(self.metrics.total_latency, 4),
+            "conversation_history_len": len(self.conversation_history),
         }
 
 # """

@@ -48,8 +48,19 @@ app.include_router(api_router, prefix="/api")
 
 # 静态文件服务
 import os
-web_demo_path = os.path.join(os.path.dirname(__file__), "..", "web_demo")
+from fastapi.responses import FileResponse
+
+# 获取项目根目录的绝对路径
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+web_demo_path = os.path.join(project_root, "web_demo")
+
 if os.path.exists(web_demo_path):
+    # 根路径重定向到quantum_sales_chat_real.html
+    @app.get("/")
+    async def read_index():
+        return FileResponse(os.path.join(web_demo_path, "quantum_sales_chat_real.html"))
+    
+    # 静态文件服务
     app.mount("/", StaticFiles(directory=web_demo_path, html=True), name="static")
 else:
     logger.warning(f"Web demo directory not found: {web_demo_path}")
@@ -95,23 +106,6 @@ async def startup_event():
 async def shutdown_event():
     """应用关闭事件"""
     logger.info("Application shutting down")
-
-
-@app.get("/")
-async def root():
-    """根路径"""
-    return {
-        "message": "多Agent智能体API系统",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "websocket": "/ws/{session_id}"
-    }
-
-
-@app.get("/health")
-async def health_check():
-    """健康检查"""
-    return {"status": "healthy"}
 
 
 if __name__ == "__main__":

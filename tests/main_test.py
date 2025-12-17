@@ -26,33 +26,22 @@ async def quantum_sales_agent():
         await agent_service.initialize()
         agent = await agent_service.create_agent_from_db(1)
         agent = await agent_service.get_active_agent()
-        print(f"✅ 智能体创建成功！ID: {agent.instance_id}")
+        print(f"✅ 智能体创建成功！ID: {agent.agent_id}")
         await agent_service.create_agent_from_db(1)
-        inst_id = agent.instance_id
-        full_cfg = agent_service.get_agent_config(agent.instance_id)
+        inst_id = agent.agent_id
+        full_cfg = agent_service.get_agent_config(agent.agent_id)
         print(full_cfg.prompt_templates)
-        print(agent.get_config())
-        await agent.initialize(full_cfg)
-        print(agent.get_config())
 
         # 模拟流式输出
         full_response = ""
+        agent.switch_active(True)
         generator = agent.process_stream(question)
         async for chunk in generator:
             print(chunk, end="", flush=True)
             full_response += chunk
-        print(agent.get_detailed_metrics())
-        print(agent.get_conversation_summary())
-        print(agent.get_conversation_stats())
-        print(agent.get_conversation_history())
-        print(agent.get_template_stats('角色定义'))
-        print(agent.get_template_stats('推理框架'))
-        print(agent.get_template_stats('检索策略'))
-        print(agent.get_template_stats('安全策略'))
-        print(agent.get_template_stats('流程指导'))
-        print(agent.list_templates())
-        print(agent.template_manager.validate_required_templates())
-        print(agent.get_conversation_summary())
+
+        agent.switch_active(False)
+        print(agent.health_check())
 
         print(f"\n\n📊 流式输出统计:")
         print(f"  总字符数: {len(full_response)}")

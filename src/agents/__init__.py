@@ -25,7 +25,7 @@ print(response)
 """
 
 from src.agents.core import (
-    BaseAgent, AgentConfig, AgentState,
+    BaseAgent, AgentState,
     BaseLLM, Message, ConversationHistory
 )
 from src.agents.impls import (
@@ -40,7 +40,6 @@ __author__ = "HelloAgents Team"
 __all__ = [
     # Core components
     'BaseAgent',
-    'AgentConfig',
     'AgentState',
     'BaseLLM',
     'Message',
@@ -54,7 +53,6 @@ __all__ = [
     'AgentFactory',
     'create_agent',
     'create_agent_from_config',
-
 
     # Tools
     'ToolRegistry',

@@ -9,7 +9,7 @@ from src.agents.core.base_llm import BaseLLM, LLMConfig
 from .deepseek_llm import DeepSeekClient
 from .mock_llm import MockLLM
 from .openai_llm import OpenAIClient
-from ... import AgentConfig
+from ...models.agent_config import AgentConfig
 from ...DTO.agent_full_config import AgentFullConfig
 
 logger = logging.getLogger(__name__)

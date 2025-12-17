@@ -152,7 +152,7 @@ class AgentRepository:
     async def get_agent(self, agent_id: int) -> Optional[AgentFullConfig]:
         return await self.agent_repo.get(agent_id)
 
-    async def list_agent_configs(self, **filters) -> List[AgentFullConfig]:
+    async def list_agent_configs(self, **filters) -> List[AgentConfig]:
         return await self.agent_repo.list(**filters)
 
     async def update_agent(self, agent_id: int, **data) -> Optional[AgentFullConfig]:
@@ -196,7 +196,6 @@ class AgentRepository:
     ) -> Dict[str, Any]:
         """分页查询智能体"""
         return await self.agent_repo.paginate(page, page_size, **filters)
-
 
 # """
 # Repository使用示例
