@@ -278,3 +278,4 @@ async def close_agent(
     except Exception as e:
         logger.error(f"关闭智能体失败: {e}")
         return APIResponse(success=False, error=str(e))
+

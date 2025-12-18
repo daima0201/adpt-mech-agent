@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown渲染测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .markdown-body {
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .markdown-body code {
+            background-color: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .markdown-body pre {
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Markdown渲染测试</h1>
+        
+        <h2>测试内容：</h2>
+        <div id="markdown-test"></div>
+        
+        <h2>原始Markdown：</h2>
+        <pre id="original-markdown"></pre>
+    </div>
+
+    <script>
+        // 配置marked.js
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            tables: true,
+            sanitize: false
+        });
+
+        // 测试Markdown内容
+        const testMarkdown = `# 标题1
+## 标题2
+### 标题3
+
+这是一个段落，包含**粗体**和*斜体*文本。
+
+- 列表项1
+- 列表项2
+- 列表项3
+
+\`\`\`javascript
+// 代码块示例
+function hello() {
+    console.log("Hello, Markdown!");
+}
+\`\`\`
+
+> 这是一个引用块
+> 可以有多行内容
+
+| 表头1 | 表头2 | 表头3 |
+|-------|-------|-------|
+| 单元格1 | 单元格2 | 单元格3 |
+| 单元格4 | 单元格5 | 单元格6 |`;
+
+        // 渲染Markdown
+        document.getElementById('markdown-test').innerHTML = marked.parse(testMarkdown);
+        document.getElementById('original-markdown').textContent = testMarkdown;
+    </script>
+</body>
+</html>
