@@ -76,22 +76,80 @@ class BaseAgent(ABC):
     # ========= 对外统一入口（不可 override） =========
 
     async def process(self, input_data: Any, **kwargs) -> Any:
-        async with self._lock:
-            return await self._run(input_data, stream=False, **kwargs)
+        """
+        执行 Agent 处理逻辑并统一统计运行指标。
+
+        指标口径说明：
+        - total_calls：每次进入 process 记一次
+        - total_latency：本次 process 的整体耗时
+        - total_errors：process 过程中发生异常的次数
+        """
+        start_time = time.time()
+        has_error = False
+
+        try:
+            result = await self._run(input_data, stream=False, **kwargs)
+            return result
+
+        except Exception:
+            has_error = True
+            logger.error(
+                f"Agent {self.agent_id} processing failed, input_type={type(input_data)}",
+                exc_info=True
+            )
+            raise
+
+        finally:
+            elapsed = time.time() - start_time
+            async with self._lock:
+                self.metrics.total_calls += 1
+                self.metrics.total_latency += elapsed
+                if has_error:
+                    self.metrics.total_errors += 1
 
     async def process_stream(self, input_data: Any, **kwargs) -> AsyncGenerator[Any, None]:
-        async with self._lock:
+        """
+        执行 Agent 流式处理逻辑并统一统计运行指标。
+
+        指标口径说明：
+        - total_calls：每次进入 process_stream 记一次
+        - total_latency：从调用开始到流结束/异常的整体耗时
+        - total_errors：流式处理过程中发生异常的次数
+        """
+        start_time = time.time()
+        has_error = False
+
+        try:
             result = await self._run(input_data, stream=True, **kwargs)
+
             if not hasattr(result, "__aiter__"):
                 raise TypeError("process_stream 必须返回 AsyncGenerator")
+
             async for chunk in result:
                 yield chunk
+
+        except Exception:
+            has_error = True
+            logger.error(
+                f"Agent {self.agent_id} stream processing failed, input_type={type(input_data)}",
+                exc_info=True
+            )
+            raise
+
+        finally:
+            elapsed = time.time() - start_time
+            async with self._lock:
+                self.metrics.total_calls += 1
+                self.metrics.total_latency += elapsed
+                if has_error:
+                    self.metrics.total_errors += 1
 
     # ========= 核心调度逻辑 =========
 
     async def _run(self, input_data: Any, *, stream: bool, **kwargs):
         if self._closed:
             raise RuntimeError(f"Agent {self.agent_id} is closed")
+
         # 🔹 新增：发言权检查
         if not self.active:
             raise RuntimeError(f"Agent {self.agent_id} 当前没有发言权")
@@ -359,7 +417,6 @@ class BaseAgent(ABC):
 #             try:
 #                 # 提取模板数据
 #                 template_data = self._extract_template(full_config, template_key)
-#
 #                 if not template_data:
 #                     if is_required:
 #                         logger.error(f"缺少必需模板: {template_name}")
