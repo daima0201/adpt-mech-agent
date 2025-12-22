@@ -9,7 +9,7 @@ from typing import Dict, Any, List
 from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Boolean, Enum as SQLEnum, text
 
 from src.agents.enum.prompt_type import PromptType
-from src.agents.core.base_config import BaseConfig
+from src.agents.base.base_config import BaseConfig
 
 
 class PromptTemplate(BaseConfig):

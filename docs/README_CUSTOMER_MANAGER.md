@@ -80,7 +80,7 @@ from src.agents.impls.agent.simple_agent import SimpleAgent
 
 # 智能体服务
 from src.services.agent_service import AgentService
-from src.managers.cache_manager import get_cache_manager
+from src.infrastructure.cache.cache_manager import get_cache_manager
 
 # LLM服务
 from src.services.llm_service import LLMService

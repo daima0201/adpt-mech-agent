@@ -10,10 +10,10 @@ from pydantic import BaseModel
 
 from src.agents import BaseAgent
 from src.agents.DTO.agent_full_config import AgentFullConfig
-from src.agents.models.agent_config import AgentConfig
+from src.agents.repositories.models import AgentConfig
 from src.agents.repositories import AgentRepository, agent_repository
-from src.managers.agent_manager import AgentManager
-from src.managers.cache_manager import get_cache_manager
+from src.agents.registry import AgentRegistry
+from src.infrastructure.cache.cache_manager import get_cache_manager
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +29,10 @@ class ChatResponse(BaseModel):
 class AgentService:
     """Agent服务层 - 提供业务逻辑和API适配"""
 
-    def __init__(self, agent_manager: AgentManager = None):
+    def __init__(self, agent_manager: AgentRegistry = None):
         self.agent_repo: Optional[AgentRepository] = None  # ✅ 初始化为None
         self.cache_manager = get_cache_manager()
-        self.agent_manager = agent_manager or AgentManager()
+        self.agent_manager = agent_manager or AgentRegistry()
         self._initialized = False
         self._lock = asyncio.Lock()
 

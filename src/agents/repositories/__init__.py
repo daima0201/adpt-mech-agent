@@ -11,7 +11,6 @@ from .repo_factory import (
     llm_repository,
     create_repository
 )
-from .session_manager import get_session_manager
 
 
 __all__ = [
@@ -26,6 +25,4 @@ __all__ = [
     'llm_repository',
     'create_repository',
 
-    # 会话管理
-    'get_session_manager',
 ]

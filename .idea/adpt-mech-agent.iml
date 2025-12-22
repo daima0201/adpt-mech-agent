@@ -18,7 +18,7 @@
   <component name="PyNamespacePackagesService">
     <option name="namespacePackageFolders">
       <list>
-        <option value="$MODULE_DIR$/src/knowledge/core" />
+        <option value="$MODULE_DIR$/src/capabilities/knowledge/core" />
       </list>
     </option>
   </component>

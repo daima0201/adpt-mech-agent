@@ -5,8 +5,8 @@ LLM服务 - 负责LLM的完整生命周期
 import logging
 from typing import Dict, Optional
 
-from src.agents.core.base_llm import BaseLLM
-from src.managers.cache_manager import UnifiedCacheManager
+from src.agents.base.base_llm import BaseLLM
+from src.infrastructure.cache.cache_manager import UnifiedCacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class LLMService:
     async def _create_llm_instance(self, config) -> BaseLLM:
         """创建LLM实例"""
         try:
-            from src.agents.impls.llm.llm_factory import LLMFactory
+            from src.infrastructure.llm.impls.llm_factory import LLMFactory
             
             # 使用LLMFactory创建LLM实例
             llm_instance = LLMFactory.create_llm(config.llm_type, config)

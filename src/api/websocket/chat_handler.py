@@ -9,7 +9,7 @@ from typing import Dict, Any
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.services.agent_service import AgentService
-from src.orchestrator.session_manager import SessionManager
+from src.core.session.session_manager import SessionManager
 from src.api.websocket.connection_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ LLM流式调用助手
 """
 
 from typing import List, Dict, Iterator, Optional
-from src.agents.core.base_llm import BaseLLM
+from src.agents.base.base_llm import BaseLLM
 
 
 class LLMStreamHelper:

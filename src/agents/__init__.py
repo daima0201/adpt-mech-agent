@@ -4,7 +4,7 @@ HelloAgents - 智能体开发框架
 一个模块化、可扩展的智能体系统框架，支持多种智能体模式和工具集成。
 
 主要组件：
-- core: 核心框架层（Agent基类、LLM接口、消息系统等）
+- base: 核心框架层（Agent基类、LLM接口、消息系统等）
 - impls: 智能体实现层（SimpleAgent、ReActAgent等）
 - tools: 工具系统层（工具注册、异步执行器等）
 
@@ -24,15 +24,13 @@ print(response)
 ```
 """
 
-from src.agents.core import (
+from src.agents.base import (
     BaseAgent, AgentState,
     BaseLLM, Message, ConversationHistory
 )
 from src.agents.impls import (
     SimpleAgent, ReActAgent, ReflectionAgent, PlanAndSolveAgent,
-    AgentFactory, create_agent, create_agent_from_config
 )
-from src.agents.tools import ToolRegistry, CalculatorTool, SearchTool
 
 __version__ = "1.0.0"
 __author__ = "HelloAgents Team"
@@ -49,13 +47,8 @@ __all__ = [
     'SimpleAgent',
     'ReActAgent',
     'ReflectionAgent',
-    'PlanAndSolveAgent',
-    'AgentFactory',
-    'create_agent',
-    'create_agent_from_config',
+    'PlanAndSolveAgent'
 
     # Tools
-    'ToolRegistry',
-    'CalculatorTool',
-    'SearchTool'
+    'ToolRegistry'
 ]

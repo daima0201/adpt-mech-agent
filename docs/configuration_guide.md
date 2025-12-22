@@ -56,7 +56,8 @@ python examples/test_basic_functionality.py
 ```python
 from src.shared.config.schemas.agent import AgentConfig
 from src.agents.impls.agent.simple_agent import SimpleAgent
-from src.agents.core.base_llm import MockLLM, DeepSeekClient
+from src.agents.base.base_llm import MockLLM, DeepSeekClient
+
 # 1. 创建智能体配置
 config = AgentConfig(
    name="专业客户经理",
@@ -85,7 +86,7 @@ print(response)
 
 ```python
 from src.services.agent_service import AgentService
-from src.managers.cache_manager import get_cache_manager
+from src.infrastructure.cache.cache_manager import get_cache_manager
 
 # 创建服务
 agent_service = AgentService(get_cache_manager())
@@ -157,23 +158,26 @@ response = await agent.run("量子加密产品的技术特点是什么？")
 ### 自定义工具
 
 ```python
-from src.agents.tools.tool_base import Tool
+from src.capabilities.tools.base import Tool
+
 
 class CustomTool(Tool):
-    """自定义工具示例"""
-    
-    def __init__(self):
-        super().__init__(
-            name="custom_tool",
-            description="自定义工具描述"
-        )
-    
-    async def execute(self, **kwargs) -> str:
-        """执行工具逻辑"""
-        return "工具执行结果"
+   """自定义工具示例"""
+
+   def __init__(self):
+      super().__init__(
+         name="custom_tool",
+         description="自定义工具描述"
+      )
+
+   async def execute(self, **kwargs) -> str:
+      """执行工具逻辑"""
+      return "工具执行结果"
+
 
 # 注册工具
-from src.agents.tools.registry import ToolRegistry
+from src.capabilities.tools.registry import ToolRegistry
+
 ToolRegistry.register(CustomTool())
 ```
 
