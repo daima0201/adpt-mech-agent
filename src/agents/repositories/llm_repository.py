@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.models.llm_config import LLMConfig
+from src.agents.repositories.models.llm_config import LLMConfig
 from .base_repository import BaseRepository
 
 

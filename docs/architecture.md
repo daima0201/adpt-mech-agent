@@ -271,7 +271,7 @@ class AgentService:
 #### 知识库基础模型（src/knowledge/core/schema/）
 
 ```python
-# src/knowledge/core/schema/chunk.py
+# src/knowledge/base/schema/chunk.py
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 
@@ -333,7 +333,7 @@ class KnowledgeBase:
 ```python
 class LLMFactory:
     """LLM工厂类 - 根据配置创建不同类型的LLM实例"""
-    
+
     @staticmethod
     def create_llm(config: LLMConfig) -> BaseLLM:
         """
@@ -346,15 +346,15 @@ class LLMFactory:
             BaseLLM实例
         """
         provider = config.provider.lower()
-        
+
         if provider == "openai":
-            from src.agents.impls.llm.openai_llm import OpenAIClient
+            from src.infrastructure.llm.impls.openai_llm import OpenAIClient
             return OpenAIClient(config)
         elif provider == "deepseek":
-            from src.agents.impls.llm.deepseek_llm import DeepSeekClient
+            from src.infrastructure.llm.impls.deepseek_llm import DeepSeekClient
             return DeepSeekClient(config)
         elif provider == "mock":
-            from src.agents.impls.llm.mock_llm import MockLLM
+            from src.infrastructure.llm.impls.mock_llm import MockLLM
             return MockLLM(config)
         else:
             raise ValueError(f"不支持的LLM提供商: {provider}")

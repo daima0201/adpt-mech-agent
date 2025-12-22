@@ -82,7 +82,7 @@ response = await agent.run("量子加密产品的技术特点是什么？")
 ### 工具调用
 
 ```python
-from src.agents.tools.registry import ToolRegistry
+from src.capabilities.tools.registry import ToolRegistry
 
 # 注册和使用工具
 ToolRegistry.register(CustomTool())
@@ -170,23 +170,26 @@ adpt-mech-agent/
 ### 🔧 添加自定义工具
 
 ```python
-from src.agents.tools.tool_base import Tool
+from src.capabilities.tools.base import Tool
+
 
 class CustomTool(Tool):
     """自定义工具示例"""
-    
+
     def __init__(self):
         super().__init__(
             name="custom_tool",
             description="自定义工具描述"
         )
-    
+
     async def execute(self, **kwargs) -> str:
         """执行工具逻辑"""
         return "工具执行结果"
 
+
 # 注册工具
-from src.agents.tools.registry import ToolRegistry
+from src.capabilities.tools.registry import ToolRegistry
+
 ToolRegistry.register(CustomTool())
 ```
 

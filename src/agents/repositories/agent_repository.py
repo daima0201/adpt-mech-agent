@@ -8,9 +8,9 @@ from typing import Dict, Any, Optional, List
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.models.agent_config import AgentConfig
-from src.agents.models.agent_profile import AgentProfile
-from src.agents.models.llm_config import LLMConfig
+from src.agents.repositories.models import AgentConfig
+from src.agents.repositories.models import AgentProfile
+from src.agents.repositories.models.llm_config import LLMConfig
 from src.agents.prompts.prompt_template import PromptTemplate
 from .base_repository import BaseRepository
 from ..DTO.agent_full_config import AgentFullConfig

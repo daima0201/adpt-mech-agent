@@ -13,9 +13,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.shared.utils.log_config import init_logging
-from src.adaptive.knowledge_manager import KnowledgeManager
+from src.knowledge.knowledge_base import KnowledgeManager
 from src.adaptive.tool_manager import KnowledgeToolManager as ToolManager
-from src.adaptive.agent_orchestrator import AgentOrchestrator
+from src.core.orchestrator.orchestrator import AgentOrchestrator
 from src.adaptive.agent_role import AgentRole
 
 logger = logging.getLogger(__name__)

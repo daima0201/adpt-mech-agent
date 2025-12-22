@@ -151,9 +151,9 @@ class AgentFullConfig:
 
         注意：这里需要导入具体的模型类
         """
-        from src.agents.models.agent_config import AgentConfig
-        from src.agents.models.agent_profile import AgentProfile
-        from src.agents.models.llm_config import LLMConfig
+        from src.agents.repositories.models import AgentConfig
+        from src.agents.repositories.models import AgentProfile
+        from src.agents.repositories.models.llm_config import LLMConfig
         from src.agents.prompts.prompt_template import PromptTemplate
 
         meta = data.get("meta", {})

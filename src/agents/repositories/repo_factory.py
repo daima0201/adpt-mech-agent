@@ -8,7 +8,6 @@ from typing import AsyncGenerator, Type, TypeVar, Dict, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .session_manager import get_session_manager
 from ...shared.utils.db_utils import get_async_session
 
 T = TypeVar('T')
@@ -18,7 +17,6 @@ class RepositoryFactory:
     """Repository工厂类"""
 
     def __init__(self):
-        self.session_manager = get_session_manager()
         self._repositories: Dict[Type, Any] = {}
 
     @asynccontextmanager

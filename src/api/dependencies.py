@@ -3,13 +3,12 @@
 提供各管理器的单例模式依赖注入
 """
 
-from typing import AsyncGenerator
 import logging
 from fastapi import Depends
 
-from src.managers.cache_manager import UnifiedCacheManager
+from src.infrastructure.cache.cache_manager import UnifiedCacheManager
 from src.services.agent_service import AgentService
-from src.orchestrator.session_manager import SessionManager
+from src.core.session.session_manager import SessionManager
 from src.api.websocket.connection_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)

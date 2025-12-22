@@ -119,8 +119,8 @@ agents:
 
 ```python
 from src.services.llm_service import LLMService
-from src.managers.cache_manager import get_cache_manager
-from src.agents.models.llm_config import LLMConfig, LLMType
+from src.infrastructure.cache.cache_manager import get_cache_manager
+from src.agents.repositories.models.llm_config import LLMConfig, LLMType
 
 # 创建LLM服务
 llm_service = LLMService(get_cache_manager())
@@ -130,14 +130,15 @@ llm = await llm_service.get_or_create_llm(1)  # 假设默认配置ID为1
 
 # 方式二：自定义配置
 config = LLMConfig(
-    llm_type=LLMType.DEEPSEEK,
-    model="deepseek-chat",
-    api_key="your_api_key"
+   llm_type=LLMType.DEEPSEEK,
+   model="deepseek-chat",
+   api_key="your_api_key"
 )
 llm = create_llm_from_config(config)
 
 # 方式三：使用智能体管理器（自动加载配置）
-from src.agents.core.manager import PreconfiguredAgentManager
+from src.agents.base.manager import PreconfiguredAgentManager
+
 manager = PreconfiguredAgentManager()
 agent = manager.get_agent("simple_assistant")
 ```
@@ -146,7 +147,7 @@ agent = manager.get_agent("simple_assistant")
 
 ```python
 from src.services.llm_service import LLMService
-from src.managers.cache_manager import get_cache_manager
+from src.infrastructure.cache.cache_manager import get_cache_manager
 
 llm_service = LLMService(get_cache_manager())
 

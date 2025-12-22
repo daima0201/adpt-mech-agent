@@ -36,8 +36,9 @@ python scripts/knowledge_cli.py build
 ## 运行示例
 
 ### 基础使用
+
 ```python
-from src.agents.core.agent import SimpleAgent
+from src.agents.base.agent import SimpleAgent
 from src.shared.config.manager import ConfigManager
 
 # 加载配置
