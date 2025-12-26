@@ -1,169 +1,120 @@
-"""
-会话管理器
-管理用户会话和消息历史
-"""
-
-import uuid
+import asyncio
 import logging
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from pydantic import BaseModel
+from typing import Dict, Optional
 
-from src.infrastructure.cache.cache_manager import UnifiedCacheManager
+from src.agents.base.base_agent import BaseAgent
+from .session_context import SessionContext  # 引入 SessionContext
 
 logger = logging.getLogger(__name__)
 
 
-class Message(BaseModel):
-    """消息数据类"""
-    id: str
-    content: str
-    role: str  # user, assistant, system
-    timestamp: datetime
-    metadata: Dict[str, Any] = {}
-
-
-class Session(BaseModel):
-    """会话数据类"""
-    id: str
-    agent_id: str
-    created_at: datetime
-    updated_at: datetime
-    messages: List[Message] = []
-    metadata: Dict[str, Any] = {}
-
-
 class SessionManager:
-    """会话管理器"""
-    
-    def __init__(self, cache_manager: UnifiedCacheManager):
-        self.cache_manager = cache_manager
-        self.default_agent_id = "default_agent"
-    
-    async def create_session(self, agent_id: Optional[str] = None) -> Session:
-        """创建新会话"""
-        session_id = str(uuid.uuid4())
-        now = datetime.now()
-        
-        if agent_id is None:
-            agent_id = self.default_agent_id
-        
-        session = Session(
-            id=session_id,
-            agent_id=agent_id,
-            created_at=now,
-            updated_at=now
-        )
-        
-        # 保存到缓存
-        await self._save_session(session)
-        logger.info(f"Session created: {session_id} with agent: {agent_id}")
-        
-        return session
-    
-    async def get_session(self, session_id: str) -> Optional[Session]:
-        """获取会话"""
+    """
+    会话编排器 - 管理多个智能体在同一会话中的行为
+    """
+
+    def __init__(self, session_id: str, context: Optional[SessionContext] = None):
+        self.session_id = session_id
+        self.context = context or SessionContext(session_id=session_id)  # 使用 SessionContext
+        self.agents: Dict[str, BaseAgent] = {}  # 会话内所有智能体
+        self._lock = asyncio.Lock()
+
+    # ==================== Agent 管理 ====================
+
+    async def add_agent(self, agent: BaseAgent):
+        """将 Agent 拉入会话"""
+        self.agents[agent.agent_id] = agent
+        agent.session_id = self.session_id
+        logger.info(f"Agent {agent.agent_id} 已加入 session {self.session_id}")
+
+    async def remove_agent(self, agent_id: str):
+        """移除 Agent"""
+        if agent_id in self.agents:
+            del self.agents[agent_id]
+            logger.info(f"Agent {agent_id} 已从 session {self.session_id} 移除")
+
+    # ==================== 发言权控制 ====================
+
+    async def acquire_speaking(self, agent_id: str):
+        """申请发言权"""
+        async with self._lock:
+            if self.context.speaking_agent_id:
+                raise RuntimeError(f"已有 Agent 正在发言: {self.context.speaking_agent_id}")
+            if agent_id not in self.agents:
+                raise ValueError(f"Agent {agent_id} 不在会话中")
+            self.context.speaking_agent_id = agent_id
+            logger.info(f"Agent {agent_id} 获得发言权")
+
+    async def release_speaking(self, agent_id: str):
+        """释放发言权"""
+        async with self._lock:
+            if self.context.speaking_agent_id != agent_id:
+                return
+            self.context.speaking_agent_id = None
+            logger.info(f"Agent {agent_id} 释放发言权")
+
+    # ==================== 用户打断 ====================
+
+    async def interrupt(self):
+        """用户打断当前发言 Agent"""
+        async with self._lock:
+            if not self.context.speaking_agent_id:
+                logger.info("当前没有 Agent 正在发言，无需打断")
+                return
+            agent_id = self.context.speaking_agent_id
+            agent = self.agents.get(agent_id)
+            if agent and hasattr(agent, "stop"):
+                agent.stop()
+            self.context.speaking_agent_id = None
+            logger.info(f"Agent {agent_id} 被用户打断")
+
+    # ==================== 消息处理 ====================
+
+    async def handle_user_message(self, message: str):
+        """
+        处理用户消息
+        - 如果 @AgentX 格式 → 切换 active
+        - 普通消息 → 默认 active Agent 回答
+        """
+        async with self._lock:
+            if self.context.speaking_agent_id:
+                raise RuntimeError("请先打断当前发言 Agent")
+
+            # 检查 @AgentX 指令
+            if message.startswith("@"):
+                agent_id, content = self._parse_mention(message)
+                await self.activate_agent(agent_id)
+                return await self._dispatch(agent_id, content)
+
+            # 默认 active Agent
+            if not self.context.active_agent_id:
+                raise RuntimeError("当前没有 active Agent")
+            return await self._dispatch(self.context.active_agent_id, message)
+
+    async def _dispatch(self, agent_id: str, content: str):
+        """统一消息派发"""
+        agent = self.agents[agent_id]
+        await self.acquire_speaking(agent_id)
         try:
-            session_data = await self.cache_manager.get_config("session", session_id)
-            if session_data:
-                return Session(**session_data)
-        except Exception as e:
-            logger.error(f"Error getting session {session_id}: {e}")
-        return None
-    
-    async def get_or_create_session(
-        self, 
-        session_id: Optional[str] = None, 
-        agent_id: Optional[str] = None
-    ) -> Session:
-        """获取或创建会话"""
-        if session_id:
-            session = await self.get_session(session_id)
-            if session:
-                # 如果提供了新的agent_id，更新会话
-                if agent_id and session.agent_id != agent_id:
-                    session.agent_id = agent_id
-                    session.updated_at = datetime.now()
-                    await self._save_session(session)
-                return session
-        
-        # 创建新会话
-        return await self.create_session(agent_id)
-    
-    async def add_message(
-        self, 
-        session_id: str, 
-        user_message: str, 
-        assistant_response: str,
-        user_role: str = "user",
-        assistant_role: str = "assistant"
-    ) -> bool:
-        """添加消息到会话"""
-        try:
-            session = await self.get_session(session_id)
-            if not session:
-                logger.warning(f"Session {session_id} not found")
-                return False
-            
-            now = datetime.now()
-            
-            # 添加用户消息
-            session.messages.append(Message(
-                id=str(uuid.uuid4()),
-                content=user_message,
-                role=user_role,
-                timestamp=now
-            ))
-            
-            # 添加助手响应
-            session.messages.append(Message(
-                id=str(uuid.uuid4()),
-                content=assistant_response,
-                role=assistant_role,
-                timestamp=now
-            ))
-            
-            session.updated_at = now
-            await self._save_session(session)
-            
-            logger.info(f"Messages added to session {session_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding message to session {session_id}: {e}")
-            return False
-    
-    async def get_message_history(self, session_id: str, limit: int = 10) -> List[Message]:
-        """获取消息历史"""
-        session = await self.get_session(session_id)
-        if session:
-            # 返回最新的limit条消息
-            return session.messages[-limit:]
-        return []
-    
-    async def delete_session(self, session_id: str) -> bool:
-        """删除会话"""
-        try:
-            await self.cache_manager.delete_config("session", session_id)
-            logger.info(f"Session deleted: {session_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error deleting session {session_id}: {e}")
-            return False
-    
-    async def _save_session(self, session: Session):
-        """保存会话到缓存"""
-        try:
-            session_dict = session.dict()
-            # 转换datetime为字符串以便序列化
-            session_dict["created_at"] = session.created_at.isoformat()
-            session_dict["updated_at"] = session.updated_at.isoformat()
-            for msg in session_dict["messages"]:
-                msg["timestamp"] = msg["timestamp"].isoformat()
-            
-            await self.cache_manager.set_config(
-                "session", session.id, session_dict, ttl=86400  # 24小时
-            )
-        except Exception as e:
-            logger.error(f"Error saving session {session.id}: {e}")
-            raise
+            # 调用 Agent 流式或非流式接口
+            if hasattr(agent, "process_stream"):
+                async for chunk in agent.process_stream(content):
+                    yield chunk
+            elif hasattr(agent, "process"):
+                result = await agent.process(content)
+                yield result
+            else:
+                raise RuntimeError(f"Agent {agent_id} 不支持处理接口")
+        finally:
+            await self.release_speaking(agent_id)
+
+    @staticmethod
+    def _parse_mention(message: str) -> tuple[str, str]:
+        """
+        解析 @AgentID 消息格式
+        例: "@AgentX 你好" -> ("AgentX", "你好")
+        """
+        parts = message.split(maxsplit=1)
+        agent_id = parts[0][1:]  # 去掉 @
+        content = parts[1] if len(parts) > 1 else ""
+        return agent_id, content

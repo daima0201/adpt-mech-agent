@@ -48,7 +48,7 @@ class SimpleAgent(PromptAgent):
 
     # ========= Stop / Interrupt =========
 
-    def stop(self):
+    def _stop(self):
         self._stop_event.set()
 
     # ========= 核心业务处理 =========

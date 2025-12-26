@@ -5,7 +5,6 @@ HelloAgents 核心框架模块
 
 from src.agents.base.base_agent import BaseAgent
 from src.agents.base.base_llm import BaseLLM
-from src.agents.base.base_message import Message, MessageType, ConversationHistory
 from src.agents.enum.agent_state import AgentState
 from src.shared.exceptions import (
     AgentError,
@@ -23,9 +22,6 @@ __all__ = [
 
     # LLM相关
     'BaseLLM',
-
-    # 消息系统
-    'Message', 'MessageType', 'ConversationHistory',
 
     # 智能体状态
     'AgentState',

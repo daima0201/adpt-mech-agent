@@ -25,8 +25,6 @@ class TemplateManager:
     """
 
     def __init__(self):
-        # 延迟导入以避免循环依赖
-        from src.agents.repositories.models import PromptTemplate
         self.PromptTemplate = PromptTemplate
         self.templates: Dict[str, PromptTemplate] = {}
         self.template_stats: Dict[str, TemplateStats] = {}

@@ -92,9 +92,9 @@ from typing import Optional
 from src.agents.DTO.agent_full_config import AgentFullConfig
 from src.agents.base.base_agent import BaseAgent
 from src.agents.base.base_llm import BaseLLM
-from src.agents.impls.plan_solve_agent import PlanAndSolveAgent
-from src.agents.impls.react_agent import ReActAgent
-from src.agents.impls.reflection_agent import ReflectionAgent
+# from src.agents.impls.plan_solve_agent import PlanAndSolveAgent
+# from src.agents.impls.react_agent import ReActAgent
+# from src.agents.impls.reflection_agent import ReflectionAgent
 from src.agents.impls.simple_agent import SimpleAgent
 from src.infrastructure.llm.impls.llm_factory import LLMFactory
 
@@ -132,12 +132,12 @@ class AgentFactory:
         agent_type = agent_full_config.agent_type
         if agent_type == "simple":
             return SimpleAgent(agent_id, agent_full_config, llm)
-        elif agent_type == "react":
-            return ReActAgent(agent_id, agent_full_config, llm)
-        elif agent_type == "plan_solve":
-            return PlanAndSolveAgent(agent_id, agent_full_config, llm)
-        elif agent_type == "reflection":
-            return ReflectionAgent(agent_id, agent_full_config, llm)
+        # elif agent_type == "react":
+        #     return ReActAgent(agent_id, agent_full_config, llm)
+        # elif agent_type == "plan_solve":
+        #     return PlanAndSolveAgent(agent_id, agent_full_config, llm)
+        # elif agent_type == "reflection":
+        #     return ReflectionAgent(agent_id, agent_full_config, llm)
         else:
             raise ValueError(f"不支持的Agent类型: {agent_type}")
 

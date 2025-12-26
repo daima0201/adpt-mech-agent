@@ -6,9 +6,12 @@ from typing import List
 
 from .agent_memory import AgentMemory
 from .memory_item import MemoryItem
+from .memory_type import MemoryType
 from .session_memory import SessionMemory
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_MEMORY_DIR = Path("data") / "memories"
 
 
 class MemoryManager:
@@ -21,10 +24,10 @@ class MemoryManager:
     def __init__(
             self,
             *,
-            base_dir: str,
+            base_dir: Path = DEFAULT_MEMORY_DIR,
             auto_flush: bool = True,
     ) -> None:
-        self.base_dir = Path(base_dir)
+        self.base_dir = base_dir
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
         self.auto_flush = auto_flush
@@ -156,9 +159,10 @@ class MemoryManager:
     # =========================
 
     def _session_file(self, session_id: str) -> Path:
-        return self.base_dir / f"{session_id}.json"
+        return self.base_dir / f"session_{session_id}.json"
 
-    def _load_from_file(self, path: Path) -> List[MemoryItem]:
+    @staticmethod
+    def _load_from_file(path: Path) -> List[MemoryItem]:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -183,7 +187,8 @@ class MemoryManager:
         with path.open("w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
 
-    def _serialize_item(self, item: MemoryItem) -> dict:
+    @staticmethod
+    def _serialize_item(item: MemoryItem) -> dict:
         return {
             "id": item.id,
             "session_id": item.session_id,

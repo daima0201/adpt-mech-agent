@@ -12,14 +12,24 @@ class MemoryItem:
     设计原则：
     - 一个 MemoryItem = 一个不可再分的记忆事实
     - 长期 / 短期是 MemoryItem 的属性，而不是容器属性
+    - persona 通过 memory_scope_id 绑定记忆视角
     """
 
     # ========= 身份 =========
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     # ========= 语义归属 =========
-    role: str = "unknown"  # agent_id / user
+    role: str = "unknown"  # agent_id / user / system
     scope: str = "session"  # session / agent
+    """
+    memory_scope_id:
+    - persona / agent / special purpose 的记忆命名空间
+    - 例：
+        - persona:quantum_consultant_XXX
+        - persona:planner_XXX
+        - agent:tool_agent_XXX
+    """
+    scope_id : str = ""  # session_id / agent_id
     term: str = "short"  # short / long
 
     # ========= 内容 =========

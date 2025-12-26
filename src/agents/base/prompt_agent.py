@@ -4,48 +4,59 @@ from typing import Any, Optional, List, Dict
 from src.agents.DTO.agent_full_config import AgentFullConfig
 from src.agents.base.base_agent import BaseAgent
 from src.agents.enum.cognitive_state import CognitiveState
-from src.agents.repositories.models import AgentConfig
 from src.agents.prompts.prompt_template import PromptTemplate
+from src.agents.prompts.template_manager import TemplateManager
+from src.agents.repositories.models import AgentConfig
 from src.shared.exceptions import AgentInitializationError
 
 logger = logging.getLogger(__name__)
 
 
 # ==================== PromptAgent ====================
-
 class PromptAgent(BaseAgent):
     """
     PromptAgent
-    - 增强认知/Prompt管理能力
+
+    职责：
+    1. 认知状态管理（cognitive_state）
+    2. Prompt 构建（委托 TemplateManager）
+    3. 执行业务处理（_do_process）
     """
 
-    def __init__(self, agent_id: str, config: AgentFullConfig, max_history: int = 10):
-        super().__init__(agent_id, max_history)
-        self.config = config
-        self.cognitive_state: Optional[CognitiveState] = CognitiveState.NONE
-        self.template_manager = None
+    #: 哪些认知状态意味着“正在说话”
+    SPEAKING_STATES = {
+        CognitiveState.THINKING,
+        CognitiveState.PROCESSING,
+        CognitiveState.PLANNING,
+        CognitiveState.WAITING_TOOL,
+        CognitiveState.REFLECTING,
+    }
 
-    async def customized_initialize(self):
-        # 延迟导入以避免循环依赖
-        from src.shared.prompts.template_manager import TemplateManager
-        if self.template_manager is None:
-            self.template_manager = TemplateManager()
+    def __init__(
+            self,
+            agent_id: str,
+            *,
+            template_manager: Optional[TemplateManager] = None,
+    ):
+        super().__init__(agent_id)
+        self.cognitive_state: CognitiveState = CognitiveState.NONE
+        self.template_manager: TemplateManager = (
+                template_manager or TemplateManager()
+        )
+
+    # ==================== 初始化 ====================
+
+    async def _customized_initialize(self):
         """
-        初始化Agent
+        PromptAgent 不解析配置结构
+        只确保 TemplateManager 可用且必需模板已就绪
         """
-        try:
-            # 1. 验证配置
-            self._validate_config(self.config)
+        if not self.template_manager.validate_required_templates():
+            raise AgentInitializationError(
+                f"PromptAgent {self.agent_id} 缺少必需模板"
+            )
 
-            # 2. 初始化模板
-            success = self._initialize_templates(self.config)
-            if not success:
-                logger.error(f"Agent模板初始化失败: {self.agent_id}")
-                raise RuntimeError
-            logger.info(f"Agent初始化成功: {self.agent_id}")
-
-        except Exception as e:
-            logger.error(f"Agent初始化失败 {self.agent_id}: {e}", exc_info=True)
+        logger.info(f"PromptAgent 初始化完成: {self.agent_id}")
 
     # ========= 认知状态管理 =========
 
@@ -53,20 +64,27 @@ class PromptAgent(BaseAgent):
         old_state = self.cognitive_state
         self.cognitive_state = state
         # 发言状态联动
-        if state in (
-                CognitiveState.THINKING,
-                CognitiveState.PROCESSING,
-                CognitiveState.PLANNING,
-                CognitiveState.WAITING_TOOL,
-                CognitiveState.REFLECTING):
-            self.speaking = True
-        else:
-            self.speaking = False
-
+        self.speaking = state in self.SPEAKING_STATES
         logger.debug(f"{self.agent_id} CognitiveState {old_state} -> {state}, speaking={self.speaking}")
 
     def get_cognitive_state(self) -> Optional[CognitiveState]:
         return self.cognitive_state
+
+    # ==================== Prompt 构建 ====================
+
+    def build_prompt(
+            self,
+            user_input: str,
+            *,
+            include_templates: Optional[list[str]] = None,
+    ) -> str:
+        """
+        构建完整 Prompt
+        """
+        return self.template_manager.build_full_prompt(
+            user_input=user_input,
+            include_templates=include_templates,
+        )
 
     # ========= Template 代理 =========
 
@@ -78,7 +96,7 @@ class PromptAgent(BaseAgent):
 
     # ========= 核心处理接口 =========
 
-    async def _process(self, input_data: Any, *, stream: bool, **kwargs):
+    async def _handle(self, input_data: Any, *, stream: bool, **kwargs):
         if input_data is None:
             raise ValueError("输入数据不能为空")
 
@@ -290,7 +308,7 @@ class PromptAgent(BaseAgent):
 
     def _validate_config(self, full_config: AgentFullConfig):
         """
-        验证配置完整性 - 简洁版本
+        验证配置完整性
         """
         if not full_config:
             raise AgentInitializationError("Agent配置不能为空")
